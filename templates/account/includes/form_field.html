@@ -1,0 +1,25 @@
+<label class="field{% if field.errors %} field--invalid{% elif form.is_bound and field.value and not field.errors %} field--valid{% endif %}">
+    <span class="field-label">{{ field.label }}</span>
+    {% if field.field.widget.input_type == 'password' %}
+        <div class="password-field">
+            {{ field }}
+            <button type="button" class="password-toggle" aria-label="Afficher le mot de passe" aria-pressed="false">
+                <i data-lucide="eye" class="icon icon-sm password-icon-show" aria-hidden="true"></i>
+                <i data-lucide="eye-off" class="icon icon-sm password-icon-hide" aria-hidden="true"></i>
+            </button>
+        </div>
+    {% else %}
+        {{ field }}
+    {% endif %}
+    {% if field.help_text %}
+        <span class="field-hint">{{ field.help_text|safe }}</span>
+    {% endif %}
+    {% if field.errors %}
+        <span class="field-error" role="alert">
+            <i data-lucide="alert-circle" class="icon icon-xs" aria-hidden="true"></i>
+            {{ field.errors.0 }}
+        </span>
+    {% elif form.is_bound and field.value and not field.errors %}
+        <span class="field-success"><i data-lucide="check" class="icon icon-xs" aria-hidden="true"></i> OK</span>
+    {% endif %}
+</label>

@@ -1,0 +1,31 @@
+[
+  {
+    "id": 0,
+    "label": "Dépôt bus",
+    "type": "depot",
+    "lat": -20.8789,
+    "lng": 55.4481,
+    "time_window_start": 360,
+    "time_window_end": 420
+  },
+  {
+    "id": 1,
+    "label": "Domicile élève A",
+    "type": "pickup",
+    "lat": -20.8825,
+    "lng": 55.4512,
+    "school_id": 2,
+    "demand": 1,
+    "time_window_start": 420,
+    "time_window_end": 450
+  },
+  {
+    "id": 2,
+    "label": "École destination",
+    "type": "school",
+    "lat": -20.8768,
+    "lng": 55.4495,
+    "time_window_start": 450,
+    "time_window_end": 480
+  }
+]

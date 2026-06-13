@@ -1,0 +1,180 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Graphicage TER — Optimisez les tournées de transport scolaire à La Réunion avec OR-Tools et une carte interactive.">
+    <title>Graphicage TER — Transport scolaire intelligent</title>
+    {% include "includes/favicon.html" %}
+    <link rel="stylesheet" href="{% static 'routing/css/landing.css' %}?v=1">
+</head>
+<body class="landing-page">
+    <header class="landing-nav">
+        <a href="{% url 'landing' %}" class="landing-logo">
+            <span class="landing-logo-icon"><i data-lucide="bus-front" aria-hidden="true"></i></span>
+            <span>Graphicage TER</span>
+        </a>
+        <nav class="landing-nav-links" aria-label="Navigation principale">
+            <a href="#fonctionnalites">Fonctionnalités</a>
+            <a href="#comment">Comment ça marche</a>
+            <a href="{% url 'documentation' %}">Documentation</a>
+        </nav>
+        <div class="landing-nav-actions">
+            {% if user.is_authenticated %}
+                <a href="{% url 'app' %}" class="landing-btn landing-btn-primary">Ouvrir l'application</a>
+            {% else %}
+                <a href="{% url 'account-login' %}" class="landing-btn landing-btn-ghost">Connexion</a>
+                <a href="{% url 'account-signup' %}" class="landing-btn landing-btn-primary">S'inscrire</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main>
+        <section class="landing-hero">
+            <div class="landing-hero-bg" aria-hidden="true"></div>
+            <div class="landing-hero-content">
+                <p class="landing-eyebrow">
+                    <i data-lucide="map-pin" class="icon icon-sm"></i>
+                    La Réunion · Transport scolaire
+                </p>
+                <h1>Optimisez vos tournées de ramassage scolaire</h1>
+                <p class="landing-lead">
+                    Planifiez les trajets bus, respectez capacité et horaires, visualisez
+                    les itinéraires sur carte — propulsé par <strong>Google OR-Tools</strong>
+                    et le réseau routier OpenStreetMap.
+                </p>
+                <div class="landing-hero-cta">
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'app' %}" class="landing-btn landing-btn-primary landing-btn-lg">
+                            <i data-lucide="route" class="icon"></i>
+                            Accéder à l'application
+                        </a>
+                    {% else %}
+                        <a href="{% url 'account-signup' %}" class="landing-btn landing-btn-primary landing-btn-lg">
+                            <i data-lucide="user-plus" class="icon"></i>
+                            Créer un compte gratuit
+                        </a>
+                        <a href="{% url 'account-login' %}" class="landing-btn landing-btn-outline landing-btn-lg">
+                            J'ai déjà un compte
+                        </a>
+                    {% endif %}
+                </div>
+                <ul class="landing-hero-stats">
+                    <li><strong>OR-Tools</strong><span>Optimisation TSP &amp; Pickup/Delivery</span></li>
+                    <li><strong>OSRM</strong><span>Distances sur le réseau routier</span></li>
+                    <li><strong>Historique</strong><span>Vos tournées sauvegardées</span></li>
+                </ul>
+            </div>
+            <div class="landing-hero-visual" aria-hidden="true">
+                <div class="landing-mock-card landing-mock-map">
+                    <div class="mock-map-grid"></div>
+                    <span class="mock-pin mock-pin-a"></span>
+                    <span class="mock-pin mock-pin-b"></span>
+                    <span class="mock-pin mock-pin-c"></span>
+                    <svg class="mock-route" viewBox="0 0 200 140" preserveAspectRatio="none">
+                        <path d="M30,100 Q80,40 120,60 T170,30" fill="none" stroke="currentColor" stroke-width="3"/>
+                    </svg>
+                </div>
+                <div class="landing-mock-card landing-mock-stats">
+                    <p class="mock-label">Résumé tournée</p>
+                    <p class="mock-value">12,4 km · 47 min</p>
+                    <p class="mock-sub">4 arrêts · 1 bus · 28 élèves max</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="landing-section" id="fonctionnalites">
+            <header class="landing-section-header">
+                <h2>Tout ce qu'il faut pour le transport scolaire</h2>
+                <p>De la saisie des domiciles à la feuille de route imprimable.</p>
+            </header>
+            <div class="landing-features">
+                <article class="landing-feature">
+                    <span class="landing-feature-icon"><i data-lucide="map" aria-hidden="true"></i></span>
+                    <h3>Carte interactive</h3>
+                    <p>Recherchez écoles et domiciles, cliquez sur la carte, importez vos points JSON.</p>
+                </article>
+                <article class="landing-feature">
+                    <span class="landing-feature-icon"><i data-lucide="git-branch" aria-hidden="true"></i></span>
+                    <h3>Ramassage → École</h3>
+                    <p>Mode Pickup &amp; Delivery : chaque domicile est lié à son établissement.</p>
+                </article>
+                <article class="landing-feature">
+                    <span class="landing-feature-icon"><i data-lucide="users" aria-hidden="true"></i></span>
+                    <h3>Capacité &amp; horaires</h3>
+                    <p>Places bus, créneaux horaires et plusieurs véhicules si besoin.</p>
+                </article>
+                <article class="landing-feature">
+                    <span class="landing-feature-icon"><i data-lucide="history" aria-hidden="true"></i></span>
+                    <h3>Historique personnel</h3>
+                    <p>Chaque calcul est enregistré — rechargez une tournée en un clic.</p>
+                </article>
+                <article class="landing-feature">
+                    <span class="landing-feature-icon"><i data-lucide="file-down" aria-hidden="true"></i></span>
+                    <h3>Exports</h3>
+                    <p>CSV, GPX pour le GPS, impression feuille de route pour le chauffeur.</p>
+                </article>
+                <article class="landing-feature">
+                    <span class="landing-feature-icon"><i data-lucide="leaf" aria-hidden="true"></i></span>
+                    <h3>Impact estimé</h3>
+                    <p>Distance, durée, carburant et CO₂ pour sensibiliser et comparer.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="landing-section landing-section-alt" id="comment">
+            <header class="landing-section-header">
+                <h2>Comment ça marche</h2>
+                <p>Trois étapes pour une tournée optimisée.</p>
+            </header>
+            <ol class="landing-steps">
+                <li>
+                    <span class="landing-step-num">1</span>
+                    <div>
+                        <h3>Ajoutez vos points</h3>
+                        <p>Dépôt bus, domiciles des élèves, écoles de destination.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="landing-step-num">2</span>
+                    <div>
+                        <h3>Configurez les contraintes</h3>
+                        <p>Capacité, fenêtres horaires, nombre de véhicules.</p>
+                    </div>
+                </li>
+                <li>
+                    <span class="landing-step-num">3</span>
+                    <div>
+                        <h3>Calculez &amp; exportez</h3>
+                        <p>Itinéraire optimal sur la carte, prêt à partager ou imprimer.</p>
+                    </div>
+                </li>
+            </ol>
+        </section>
+
+        <section class="landing-cta">
+            <div class="landing-cta-inner">
+                <h2>Prêt à optimiser vos tournées ?</h2>
+                <p>Créez votre compte en quelques secondes et accédez à l'outil complet.</p>
+                {% if user.is_authenticated %}
+                    <a href="{% url 'app' %}" class="landing-btn landing-btn-primary landing-btn-lg">Lancer l'application</a>
+                {% else %}
+                    <a href="{% url 'account-signup' %}" class="landing-btn landing-btn-primary landing-btn-lg">Commencer gratuitement</a>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+
+    <footer class="landing-footer">
+        <p>Graphicage TER — Projet recherche · Transport scolaire La Réunion</p>
+        <p class="landing-footer-links">
+            <a href="{% url 'documentation' %}">Documentation</a>
+            <a href="{% url 'account-login' %}">Connexion</a>
+        </p>
+    </footer>
+
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin=""></script>
+    <script>if (window.lucide) lucide.createIcons();</script>
+</body>
+</html>

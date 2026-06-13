@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Graphicage TER">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
+  <g fill="#fff" transform="translate(4 7)">
+    <path d="M2 4h20a3 3 0 013 3v9a3 3 0 01-3 3h-1.5v2.5h-2.5V19H5.5v2.5H3V19H2a3 3 0 01-3-3V7a3 3 0 013-3zm0 3v9h20V7H2zm3 11.5a2 2 0 110-4 2 2 0 010 4zm14 0a2 2 0 110-4 2 2 0 010 4z"/>
+    <rect x="5" y="9" width="5" height="4" rx="0.5" opacity="0.85"/>
+    <rect x="12" y="9" width="5" height="4" rx="0.5" opacity="0.85"/>
+  </g>
+</svg>

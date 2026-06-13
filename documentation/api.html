@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API REST — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>API REST</h1>
+            <p class="doc-lead">Référence des endpoints exposés par Django REST Framework.</p>
+
+            <section>
+                <h2>GET /api/dataset/sample/</h2>
+                <p>Retourne le jeu de données exemple avec coordonnées GPS.</p>
+                <p><span class="doc-badge">Authentification</span> Aucune &nbsp; <span class="doc-badge">CSRF</span> Non requis</p>
+
+                <h3>Exemple de réponse (200 OK)</h3>
+                <pre><code>[
+  {
+    "id": 0,
+    "label": "Dépôt bus — Saint-Denis",
+    "type": "depot",
+    "lat": -20.8789,
+    "lng": 55.4481,
+    "address": "Saint-Denis 97400, La Réunion"
+  },
+  {
+    "id": 1,
+    "label": "Domicile — Av. René Cassin",
+    "type": "pickup",
+    "lat": -20.8825,
+    "lng": 55.4512,
+    "school_id": 2
+  }
+]</code></pre>
+            </section>
+
+            <section>
+                <h2>GET /api/places/search/</h2>
+                <p>Recherche de lieux à La Réunion via des APIs publiques (proxy Django). Utilisé par la barre de recherche de la sidebar.</p>
+                <h3>Paramètres</h3>
+                <table class="doc-table">
+                    <thead><tr><th>Paramètre</th><th>Type</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>q</code></td><td>string</td><td>Texte recherché (min. 2 caractères)</td></tr>
+                        <tr><td><code>type</code></td><td>string</td><td><code>all</code>, <code>school</code>, <code>pickup</code>, <code>delivery</code>, <code>depot</code>, <code>stop</code></td></tr>
+                        <tr><td><code>limit</code></td><td>int</td><td>Nombre max de résultats (défaut 8, max 15)</td></tr>
+                    </tbody>
+                </table>
+                <h3>Exemple</h3>
+                <pre><code>curl "http://localhost:8000/api/places/search/?q=mondon&amp;type=school&amp;limit=5"</code></pre>
+                <h3>Réponse</h3>
+                <pre><code>{
+  "results": [
+    {
+      "id": "school-0-École Raymond Mondon",
+      "label": "École Raymond Mondon",
+      "subtitle": "École, 71 Rue Alexis de Villeneuve, Saint-Denis, 97400",
+      "type": "school",
+      "lat": -20.8725,
+      "lng": 55.452,
+      "source": "education"
+    }
+  ]
+}</code></pre>
+                <p>Sources : Éducation nationale (écoles), Géoplateforme IGN (adresses), Photon/OSM (arrêts, dépôts).</p>
+            </section>
+
+            <section>
+                <h2>POST /api/route/solve/</h2>
+                <p>Résout un problème de tournée et retourne l'itinéraire optimisé.</p>
+                <p><span class="doc-badge">Content-Type</span> application/json &nbsp;
+                   <span class="doc-badge">CSRF</span> Requis (header X-CSRFToken)</p>
+
+                <h3>Corps de la requête</h3>
+                <table class="doc-table">
+                    <thead><tr><th>Champ</th><th>Type</th><th>Requis</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>problem_type</code></td><td>string</td><td>Non</td><td><code>tsp</code> ou <code>pdp</code> (défaut: tsp)</td></tr>
+                        <tr><td><code>points</code></td><td>array</td><td>Oui</td><td>Liste de points (min. 2)</td></tr>
+                        <tr><td><code>points[].id</code></td><td>int</td><td>Oui</td><td>Identifiant unique</td></tr>
+                        <tr><td><code>points[].lat</code></td><td>float</td><td>Oui</td><td>Latitude WGS84</td></tr>
+                        <tr><td><code>points[].lng</code></td><td>float</td><td>Oui</td><td>Longitude WGS84</td></tr>
+                        <tr><td><code>points[].type</code></td><td>string</td><td>Non</td><td>depot, pickup, delivery, school, stop</td></tr>
+                        <tr><td><code>num_vehicles</code></td><td>int</td><td>Non</td><td>Nombre de véhicules (défaut: 1)</td></tr>
+                        <tr><td><code>depot_index</code></td><td>int</td><td>Non</td><td>Index du dépôt dans points (défaut: 0)</td></tr>
+                        <tr><td><code>pickups_deliveries</code></td><td>array</td><td>PDP</td><td>Paires [[pickup_idx, delivery_idx], ...]</td></tr>
+                        <tr><td><code>max_distance</code></td><td>int</td><td>Non</td><td>Distance max par véhicule en m (défaut: 1000000)</td></tr>
+                        <tr><td><code>vehicle_capacities</code></td><td>int[]</td><td>Non</td><td>Capacité par véhicule (places)</td></tr>
+                        <tr><td><code>use_time_windows</code></td><td>bool</td><td>Non</td><td>Active les fenêtres horaires</td></tr>
+                        <tr><td><code>average_speed_kmh</code></td><td>float</td><td>Non</td><td>Vitesse pour convertir distance → temps (défaut: 30)</td></tr>
+                        <tr><td><code>use_road_routing</code></td><td>bool</td><td>Non</td><td>OSRM si true (défaut: true)</td></tr>
+                        <tr><td><code>points[].demand</code></td><td>int</td><td>Non</td><td>Élèves au ramassage</td></tr>
+                        <tr><td><code>points[].school_id</code></td><td>int</td><td>Non</td><td>ID de l'école associée (UI)</td></tr>
+                        <tr><td><code>points[].time_window_start</code></td><td>int</td><td>Non</td><td>Début créneau en minutes (ex: 420 = 07:00)</td></tr>
+                        <tr><td><code>points[].time_window_end</code></td><td>int</td><td>Non</td><td>Fin créneau en minutes</td></tr>
+                    </tbody>
+                </table>
+
+                <h3>Exemple TSP</h3>
+                <pre><code>{
+  "problem_type": "tsp",
+  "num_vehicles": 1,
+  "depot_index": 0,
+  "points": [
+    {"id": 0, "lat": -20.8789, "lng": 55.4481, "type": "depot", "label": "Dépôt"},
+    {"id": 1, "lat": -20.8795, "lng": 55.4490, "type": "stop", "label": "A"},
+    {"id": 2, "lat": -20.8800, "lng": 55.4475, "type": "stop", "label": "B"}
+  ]
+}</code></pre>
+
+                <h3>Exemple Pickup &amp; Delivery</h3>
+                <pre><code>{
+  "problem_type": "pdp",
+  "depot_index": 0,
+  "pickups_deliveries": [[1, 2], [3, 4]],
+  "points": [
+    {"id": 0, "lat": -20.8789, "lng": 55.4481, "type": "depot"},
+    {"id": 1, "lat": -20.8795, "lng": 55.4490, "type": "pickup"},
+    {"id": 2, "lat": -20.8800, "lng": 55.4475, "type": "school"},
+    {"id": 3, "lat": -20.8810, "lng": 55.4460, "type": "pickup"},
+    {"id": 4, "lat": -20.8725, "lng": 55.4520, "type": "school"}
+  ]
+}</code></pre>
+
+                <h3>Réponse succès (200 OK)</h3>
+                <pre><code>{
+  "problem_type": "pdp",
+  "routing_engine": "osrm",
+  "objective_value": 4523,
+  "summary": {
+    "total_distance_meters": 4523,
+    "total_distance_label": "4.52 km",
+    "total_duration_minutes": 18,
+    "total_stops": 6,
+    "vehicle_count": 1,
+    "max_load": 12,
+    "fuel_liters_estimate": 1.6,
+    "co2_kg_estimate": 4.3
+  },
+  "history_id": 42,
+  "routes": [ ... ]
+}</code></pre>
+                <p><code>history_id</code> présent uniquement si l'utilisateur est connecté (session).</p>
+
+                <h3>Erreurs</h3>
+                <table class="doc-table">
+                    <thead><tr><th>Code</th><th>Cause</th></tr></thead>
+                    <tbody>
+                        <tr><td>400</td><td>Données invalides (validation serializer)</td></tr>
+                        <tr><td>422</td><td>Pas de solution OR-Tools ou erreur métier</td></tr>
+                    </tbody>
+                </table>
+                <pre><code>{"detail": "Aucune solution trouvée. Vérifiez les contraintes pickup/delivery."}</code></pre>
+            </section>
+
+            <section>
+                <h2>Authentification (session)</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Endpoint</th><th>Méthode</th><th>Auth</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>/api/auth/me/</code></td><td>GET</td><td>—</td><td>État connexion + profil</td></tr>
+                        <tr><td><code>/api/auth/login/</code></td><td>POST</td><td>—</td><td>Connexion JSON</td></tr>
+                        <tr><td><code>/api/auth/logout/</code></td><td>POST</td><td>Session</td><td>Déconnexion</td></tr>
+                        <tr><td><code>/api/auth/signup/</code></td><td>POST</td><td>—</td><td>Inscription JSON</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Historique</h2>
+                <p><span class="doc-badge">Auth</span> Session requise</p>
+                <table class="doc-table">
+                    <thead><tr><th>Endpoint</th><th>Méthode</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>/api/history/</code></td><td>GET</td><td>Liste des calculs (100 max)</td></tr>
+                        <tr><td><code>/api/history/&lt;id&gt;/</code></td><td>GET</td><td>Détail complet</td></tr>
+                        <tr><td><code>/api/history/&lt;id&gt;/</code></td><td>DELETE</td><td>Supprimer</td></tr>
+                        <tr><td><code>/api/history/&lt;id&gt;/restore/</code></td><td>POST</td><td>Points + config + result</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>GET /api/catalog/points/</h2>
+                <p>Lieux enregistrés via l'admin Django. Intégrés à la recherche sidebar.</p>
+                <p>Paramètre optionnel : <code>type</code> (school, pickup, …)</p>
+            </section>
+
+            <section>
+                <h2>POST /api/geocode/</h2>
+                <p>Géocodage d'une adresse (Google si clé, sinon Nominatim).</p>
+                <pre><code>{"address": "Saint-Denis, La Réunion"}</code></pre>
+            </section>
+
+            <section>
+                <h2>Scénarios enregistrés</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Endpoint</th><th>Méthode</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>/api/scenarios/</code></td><td>GET</td><td>Liste (public + siennes)</td></tr>
+                        <tr><td><code>/api/scenarios/</code></td><td>POST</td><td>Créer (auth requise)</td></tr>
+                        <tr><td><code>/api/scenarios/&lt;slug&gt;/</code></td><td>GET/PATCH/DELETE</td><td>Détail (propriétaire)</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>GET /api/dataset/template/</h2>
+                <p>Modèle JSON minimal pour import de points.</p>
+            </section>
+
+            <section>
+                <h2>Test avec curl</h2>
+                <pre><code>curl http://localhost:8000/api/dataset/sample/
+
+curl -X POST http://localhost:8000/api/route/solve/ \
+  -H "Content-Type: application/json" \
+  -d '{"problem_type":"tsp","points":[
+    {"id":0,"lat":-20.8789,"lng":55.4481,"type":"depot"},
+    {"id":1,"lat":-20.8795,"lng":55.4490,"type":"stop"}
+  ]}'</code></pre>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

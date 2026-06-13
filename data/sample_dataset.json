@@ -1,0 +1,78 @@
+[
+  {
+    "id": 0,
+    "label": "Dépôt bus — Saint-Denis",
+    "type": "depot",
+    "lat": -20.8789,
+    "lng": 55.4481,
+    "address": "Saint-Denis 97400, La Réunion",
+    "time_window_start": 360,
+    "time_window_end": 420
+  },
+  {
+    "id": 1,
+    "label": "Domicile — Av. René Cassin",
+    "type": "pickup",
+    "lat": -20.8825,
+    "lng": 55.4512,
+    "address": "15 Av. René Cassin, Saint-Denis 97400",
+    "school_id": 2,
+    "demand": 1,
+    "time_window_start": 420,
+    "time_window_end": 450
+  },
+  {
+    "id": 2,
+    "label": "École Primaire Ancien Théâtre",
+    "type": "school",
+    "lat": -20.8768,
+    "lng": 55.4495,
+    "address": "65 Rue Ruisseau des Noirs, Saint-Denis 97400",
+    "time_window_start": 450,
+    "time_window_end": 480
+  },
+  {
+    "id": 3,
+    "label": "Domicile — Rue de la Source",
+    "type": "pickup",
+    "lat": -20.8851,
+    "lng": 55.4463,
+    "address": "30 BIS Rue de la Source, Saint-Denis 97400",
+    "school_id": 4,
+    "demand": 2,
+    "time_window_start": 420,
+    "time_window_end": 455
+  },
+  {
+    "id": 4,
+    "label": "École maternelle Gisèle Calmy",
+    "type": "school",
+    "lat": -20.8812,
+    "lng": 55.4428,
+    "address": "La Source, Saint-Denis 97400",
+    "time_window_start": 455,
+    "time_window_end": 485
+  },
+  {
+    "id": 5,
+    "label": "Domicile — Rue Maurice Ravel",
+    "type": "pickup",
+    "lat": -20.8742,
+    "lng": 55.4551,
+    "address": "Rue Maurice Ravel, Saint-Denis 97400",
+    "school_id": 6,
+    "demand": 1,
+    "time_window_start": 425,
+    "time_window_end": 460
+  },
+  {
+    "id": 6,
+    "label": "École Raymond Mondon",
+    "type": "school",
+    "lat": -20.8725,
+    "lng": 55.4520,
+    "address": "71 Rue Alexis de Villeneuve, Saint-Denis 97400",
+    "time_window_start": 460,
+    "time_window_end": 490
+  }
+]

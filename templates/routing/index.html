@@ -1,0 +1,371 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphicage TER — Optimisation de tournées</title>
+    {% include "includes/favicon.html" %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin="">
+    <link rel="stylesheet" href="{% static 'routing/css/app.css' %}?v=14">
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div class="brand">
+                    <span class="brand-icon"><i data-lucide="bus-front" aria-hidden="true"></i></span>
+                    <div>
+                        <h1>Graphicage TER</h1>
+                        <p>Transport scolaire — La Réunion</p>
+                    </div>
+                </div>
+            </header>
+
+            <section class="panel panel-auth" id="auth-panel" aria-label="Compte utilisateur">
+                <h2>Mon compte</h2>
+                <div id="auth-user" class="auth-user">
+                    <p class="auth-welcome">Connecté en tant que <strong id="auth-username">{{ user.username }}</strong></p>
+                    <button type="button" id="btn-logout" class="btn btn-ghost">
+                        <i data-lucide="log-out" class="icon" aria-hidden="true"></i>
+                        Déconnexion
+                    </button>
+                    <a href="{% url 'landing' %}" class="btn-link auth-forgot">Retour à l'accueil</a>
+                </div>
+            </section>
+
+            <section class="panel panel-guide" aria-label="Guide d'utilisation">
+                <h2>Comment ça marche</h2>
+                <ol class="guide-steps" id="guide-steps">
+                    <li class="guide-step" data-step="points">
+                        <span class="guide-step-num" aria-hidden="true">
+                            <i data-lucide="map-pin-plus" class="icon icon-step"></i>
+                        </span>
+                        <div class="guide-step-body">
+                            <strong>Ajouter des points</strong>
+                            <span>Recherchez un lieu, cliquez sur la carte ou chargez l'exemple.</span>
+                        </div>
+                    </li>
+                    <li class="guide-step" data-step="types">
+                        <span class="guide-step-num" aria-hidden="true">
+                            <i data-lucide="tags" class="icon icon-step"></i>
+                        </span>
+                        <div class="guide-step-body">
+                            <strong>Typage</strong>
+                            <span>Dépôt (bus), École, Ramassage (domicile). Liez chaque ramassage à une école.</span>
+                        </div>
+                    </li>
+                    <li class="guide-step" data-step="config">
+                        <span class="guide-step-num" aria-hidden="true">
+                            <i data-lucide="settings-2" class="icon icon-step"></i>
+                        </span>
+                        <div class="guide-step-body">
+                            <strong>Configuration</strong>
+                            <span>Mode <em>Pickup &amp; Delivery</em> pour le scolaire. Capacité et horaires si besoin.</span>
+                        </div>
+                    </li>
+                    <li class="guide-step" data-step="solve">
+                        <span class="guide-step-num" aria-hidden="true">
+                            <i data-lucide="route" class="icon icon-step"></i>
+                        </span>
+                        <div class="guide-step-body">
+                            <strong>Calculer</strong>
+                            <span>L'itinéraire optimisé s'affiche sur la carte et dans l'onglet Résultat.</span>
+                        </div>
+                    </li>
+                </ol>
+                <p class="workflow-status" id="workflow-status" role="status"></p>
+            </section>
+
+            <section class="panel">
+                <h2>Configuration</h2>
+                <label class="field">
+                    <span>Type de problème</span>
+                    <select id="problem-type">
+                        <option value="tsp">TSP — Tournée simple</option>
+                        <option value="pdp" selected>Pickup &amp; Delivery</option>
+                    </select>
+                    <span class="field-hint" id="problem-type-hint"></span>
+                </label>
+                <label class="field">
+                    <span>Nombre de véhicules</span>
+                    <input id="num-vehicles" type="number" min="1" max="5" value="1">
+                </label>
+                <label class="field field-checkbox">
+                    <input id="enable-capacity" type="checkbox">
+                    <span>Capacité bus (places)</span>
+                </label>
+                <label class="field" id="capacity-field" hidden>
+                    <span>Places par bus</span>
+                    <input id="vehicle-capacity" type="number" min="1" max="200" value="50">
+                </label>
+                <label class="field field-checkbox">
+                    <input id="enable-time-windows" type="checkbox">
+                    <span>Fenêtres horaires</span>
+                </label>
+                <label class="field field-checkbox" id="default-tw-field" hidden>
+                    <input id="use-default-time-windows" type="checkbox" checked>
+                    <span>Créneaux par défaut (ramassage / école)</span>
+                </label>
+                <label class="field field-checkbox">
+                    <input id="use-road-routing" type="checkbox" checked>
+                    <span>Routes réelles (OSRM)</span>
+                </label>
+                <label class="field" id="speed-field" hidden>
+                    <span>Vitesse moyenne (km/h)</span>
+                    <input id="average-speed" type="number" min="5" max="120" value="30">
+                </label>
+            </section>
+
+            <section class="panel panel-search">
+                <h2>Rechercher un lieu</h2>
+                <label class="field">
+                    <span>Nom ou adresse</span>
+                    <input type="search" id="place-search-input"
+                           placeholder="École, rue, arrêt bus…" autocomplete="off">
+                </label>
+                <label class="field">
+                    <span>Ajouter comme</span>
+                    <select id="place-search-type">
+                        <option value="all">Tous types</option>
+                        <option value="school">École</option>
+                        <option value="pickup">Ramassage</option>
+                        <option value="delivery">Livraison</option>
+                        <option value="depot">Dépôt</option>
+                        <option value="stop">Arrêt bus</option>
+                    </select>
+                </label>
+                <p id="place-search-status" class="place-search-status" hidden></p>
+                <ul id="place-search-results" class="place-search-results" hidden></ul>
+            </section>
+
+            <section class="panel">
+                <h2>Actions</h2>
+                <div class="btn-group">
+                    <button type="button" id="btn-load-sample" class="btn btn-secondary">
+                        <i data-lucide="database" class="icon" aria-hidden="true"></i>
+                        Charger l'exemple
+                    </button>
+                    <button type="button" id="btn-clear" class="btn btn-ghost">
+                        <i data-lucide="trash-2" class="icon" aria-hidden="true"></i>
+                        Effacer tout
+                    </button>
+                </div>
+                <div class="btn-group">
+                    <button type="button" id="btn-import" class="btn btn-secondary">
+                        <i data-lucide="upload" class="icon" aria-hidden="true"></i>
+                        Importer JSON
+                    </button>
+                    <button type="button" id="btn-export" class="btn btn-ghost">
+                        <i data-lucide="download" class="icon" aria-hidden="true"></i>
+                        Exporter
+                    </button>
+                </div>
+                <div class="btn-group">
+                    <button type="button" id="btn-undo" class="btn btn-ghost" disabled>
+                        <i data-lucide="undo-2" class="icon" aria-hidden="true"></i>
+                        Annuler
+                    </button>
+                    <button type="button" id="btn-share" class="btn btn-ghost">
+                        <i data-lucide="link" class="icon" aria-hidden="true"></i>
+                        Partager
+                    </button>
+                </div>
+                <button type="button" id="btn-save-scenario" class="btn btn-secondary">
+                    <i data-lucide="save" class="icon" aria-hidden="true"></i>
+                    Enregistrer en base
+                </button>
+                <input type="file" id="import-file" accept=".json,application/json" hidden>
+                <button type="button" id="btn-download-template" class="btn-link">
+                    <i data-lucide="file-json" class="icon icon-inline" aria-hidden="true"></i>
+                    Télécharger le modèle JSON
+                </button>
+                <button type="button" id="btn-solve" class="btn btn-primary">
+                    <i data-lucide="route" class="icon" aria-hidden="true"></i>
+                    Calculer l'itinéraire
+                </button>
+                <p class="hint">Besoin d'aide ? Consultez le guide ci-dessus ou l'onglet <strong>Guide</strong> sur la carte.</p>
+            </section>
+        </aside>
+
+        <main class="map-area">
+            <div id="map"></div>
+
+            <div id="map-legend" class="map-legend" aria-label="Légende de la carte">
+                <h4 class="map-legend-title">Légende</h4>
+                <div class="legend-section">
+                    <p class="legend-subtitle">Types de points</p>
+                    <ul class="legend-list" id="legend-points"></ul>
+                </div>
+                <div class="legend-section" id="legend-routes-section" hidden>
+                    <p class="legend-subtitle">Itinéraires</p>
+                    <ul class="legend-list" id="legend-routes"></ul>
+                </div>
+            </div>
+
+            <button type="button" id="panel-toggle" class="panel-toggle" aria-label="Ouvrir le panneau des points" hidden>
+                <span class="panel-toggle-icon"><i data-lucide="map-pin" aria-hidden="true"></i></span>
+                <span id="panel-toggle-label">Points (0)</span>
+            </button>
+
+            <aside class="floating-panel" id="details-panel" aria-label="Points, résultats et documentation">
+                <header class="floating-panel-header">
+                    <nav class="floating-tabs" role="tablist">
+                        <button type="button" class="floating-tab active" role="tab" id="tab-btn-points" aria-selected="true" aria-controls="tab-points" data-tab="points">
+                            Points (<span id="point-count">0</span>)
+                        </button>
+                        <button type="button" class="floating-tab" role="tab" id="tab-btn-results" aria-selected="false" aria-controls="tab-results" data-tab="results">
+                            Résultat
+                        </button>
+                        <button type="button" class="floating-tab" role="tab" id="tab-btn-schools" aria-selected="false" aria-controls="tab-schools" data-tab="schools">
+                            Écoles
+                        </button>
+                        <button type="button" class="floating-tab" role="tab" id="tab-btn-history" aria-selected="false" aria-controls="tab-history" data-tab="history">
+                            Historique
+                        </button>
+                        <button type="button" class="floating-tab" role="tab" id="tab-btn-guide" aria-selected="false" aria-controls="tab-guide" data-tab="guide">
+                            Guide
+                        </button>
+                    </nav>
+                    <button type="button" id="panel-minimize" class="panel-minimize" aria-label="Réduire le panneau">
+                        <i data-lucide="minus" aria-hidden="true"></i>
+                    </button>
+                </header>
+
+                <div class="floating-panel-body">
+                    <section class="floating-tab-panel active" id="tab-points" role="tabpanel" aria-labelledby="tab-btn-points">
+                        <div id="points-list-empty" class="points-empty-state" hidden>
+                            <p><strong>Aucun point pour l'instant.</strong></p>
+                            <p>Utilisez la recherche dans la barre latérale, cliquez sur la carte, ou chargez l'exemple de démonstration.</p>
+                        </div>
+                        <ul id="points-list" class="points-list"></ul>
+                    </section>
+
+                    <section class="floating-tab-panel" id="tab-results" role="tabpanel" aria-labelledby="tab-btn-results" hidden>
+                        <div id="results-empty" class="results-empty">Calculez un itinéraire pour voir le résultat ici.</div>
+                        <div id="results-help" class="results-help" hidden></div>
+                        <div class="results-toolbar" id="results-toolbar" hidden>
+                            <button type="button" id="btn-export-csv" class="btn btn-secondary btn-sm">
+                                <i data-lucide="file-spreadsheet" class="icon" aria-hidden="true"></i> CSV
+                            </button>
+                            <button type="button" id="btn-export-gpx" class="btn btn-secondary btn-sm">
+                                <i data-lucide="map" class="icon" aria-hidden="true"></i> GPX
+                            </button>
+                            <button type="button" id="btn-print" class="btn btn-ghost btn-sm">
+                                <i data-lucide="printer" class="icon" aria-hidden="true"></i> Imprimer
+                            </button>
+                            <button type="button" id="btn-set-baseline" class="btn btn-ghost btn-sm">
+                                <i data-lucide="git-compare" class="icon" aria-hidden="true"></i> Référence
+                            </button>
+                        </div>
+                        <div id="results-content"></div>
+                    </section>
+
+                    <section class="floating-tab-panel" id="tab-schools" role="tabpanel" aria-labelledby="tab-btn-schools" hidden>
+                        <div id="school-groups" class="school-groups"></div>
+                    </section>
+
+                    <section class="floating-tab-panel" id="tab-history" role="tabpanel" aria-labelledby="tab-btn-history" hidden>
+                        <p id="history-empty" class="history-empty">Connectez-vous pour voir vos tournées passées.</p>
+                        <ul id="history-list" class="history-list"></ul>
+                    </section>
+
+                    <section class="floating-tab-panel" id="tab-guide" role="tabpanel" aria-labelledby="tab-btn-guide" hidden>
+                        <div class="guide-panel">
+                            <h3 class="guide-panel-title">Utiliser Graphicage TER</h3>
+
+                            <article class="guide-block">
+                                <h4>Objectif</h4>
+                                <p>Optimiser les tournées de transport scolaire : ordre de passage, distance, capacité du bus et horaires.</p>
+                            </article>
+
+                            <article class="guide-block">
+                                <h4>Les types de points</h4>
+                                <ul class="guide-types">
+                                    <li><span class="point-badge depot"></span> <strong>Dépôt</strong> — où part et revient le bus (1 seul en général)</li>
+                                    <li><span class="point-badge school"></span> <strong>École</strong> — lieu de dépose des élèves</li>
+                                    <li><span class="point-badge pickup"></span> <strong>Ramassage</strong> — domicile ou arrêt de prise en charge</li>
+                                    <li><span class="point-badge delivery"></span> <strong>Livraison</strong> — point de dépose (autre cas d'usage)</li>
+                                    <li><span class="point-badge stop"></span> <strong>Arrêt</strong> — point intermédiaire sans contrainte spéciale</li>
+                                </ul>
+                            </article>
+
+                            <article class="guide-block">
+                                <h4>Mode Pickup &amp; Delivery (recommandé)</h4>
+                                <p>Pour le scolaire : chaque <strong>ramassage</strong> doit être lié à une <strong>école</strong> dans la liste des points. Le bus passe d'abord au domicile, puis dépose à l'école.</p>
+                                <p class="guide-note">Si vous utilisez des ramassages et des écoles, choisissez ce mode — pas « TSP ».</p>
+                            </article>
+
+                            <article class="guide-block">
+                                <h4>Mode TSP — Tournée simple</h4>
+                                <p>Visite une liste de points dans le meilleur ordre, sans contrainte ramassage→école. Utile pour une tournée de visite ou sans élèves à associer.</p>
+                            </article>
+
+                            <article class="guide-block">
+                                <h4>Capacité bus</h4>
+                                <p>Le nombre d'<strong>élèves</strong> à chaque ramassage ne doit pas dépasser les <strong>places par bus</strong>. Si vous avez 50 élèves et un bus de 30 places, augmentez les places, ajoutez un véhicule, ou répartissez les élèves.</p>
+                            </article>
+
+                            <article class="guide-block">
+                                <h4>Fenêtres horaires</h4>
+                                <p>Chaque point peut avoir un créneau (ex. ramassage 06:30–07:30, école 07:00–08:00). Les horaires doivent être compatibles avec le temps de trajet.</p>
+                            </article>
+
+                            <article class="guide-block">
+                                <h4>Erreur « Aucune solution » ?</h4>
+                                <ul class="guide-checklist">
+                                    <li>Mode <strong>Pickup &amp; Delivery</strong> si vous avez des ramassages</li>
+                                    <li>Chaque ramassage lié à une école</li>
+                                    <li>Élèves ≤ places du bus</li>
+                                    <li>Créneaux horaires réalistes (élargir si besoin)</li>
+                                    <li>Au moins 1 dépôt et 2 points au total</li>
+                                </ul>
+                            </article>
+
+                            <a href="/documentation/" target="_blank" rel="noopener" class="btn btn-secondary doc-link">
+                                <i data-lucide="book-open" class="icon" aria-hidden="true"></i>
+                                Documentation technique complète
+                            </a>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+
+            <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+                <span class="toast-icon" aria-hidden="true">
+                    <i data-lucide="info" class="icon icon-sm"></i>
+                </span>
+                <span class="toast-message"></span>
+                <button type="button" id="toast-close" class="toast-close" aria-label="Fermer">
+                    <i data-lucide="x" class="icon icon-sm"></i>
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <div id="app-loader" class="app-loader" hidden aria-hidden="true" role="alertdialog" aria-modal="true" aria-labelledby="loader-title" aria-describedby="loader-desc">
+        <div class="app-loader-card">
+            <div class="app-loader-spinner" aria-hidden="true"></div>
+            <p id="loader-title" class="app-loader-title">Calcul de l'itinéraire</p>
+            <p id="loader-desc" class="app-loader-desc">Optimisation en cours…</p>
+        </div>
+    </div>
+
+    <script>
+        window.GRAPHICAGE_CONFIG = {
+            mapCenter: {{ map_center_json|safe }},
+            mapZoom: {{ map_zoom }},
+            csrfToken: "{{ csrf_token }}",
+        };
+    </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin=""></script>
+    <script src="{% static 'routing/js/features.js' %}?v=2"></script>
+    <script src="{% static 'routing/js/auth.js' %}?v=1"></script>
+    <script src="{% static 'routing/js/app.js' %}?v=13"></script>
+</body>
+</html>

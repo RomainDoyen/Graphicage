@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migration — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>Migration depuis GraphicageTER</h1>
+            <p class="doc-lead">Historique, correspondance des fichiers et évolutions apportées.</p>
+
+            <section>
+                <h2>Projet source</h2>
+                <p>
+                    Le dossier <code>GraphicageTER/</code> contenait des travaux de recherche sur l'optimisation
+                    du transport scolaire à La Réunion, avec des scripts OR-Tools isolés et un prototype Django basique.
+                </p>
+            </section>
+
+            <section>
+                <h2>Améliorations majeures (v2)</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Avant</th><th>Après (graphicage-ter-app)</th></tr></thead>
+                    <tbody>
+                        <tr><td>Page unique</td><td>Landing + app authentifiée (<code>/app/</code>)</td></tr>
+                        <tr><td>Pas de comptes</td><td>Inscription, connexion, mot de passe oublié, historique</td></tr>
+                        <tr><td>SQLite seul</td><td>Neon Postgres + modèles métier</td></tr>
+                        <tr><td>Haversine seul</td><td>OSRM + résumé carburant / CO₂</td></tr>
+                        <tr><td>Pas d'exports</td><td>CSV, GPX, impression</td></tr>
+                        <tr><td>UI basique</td><td>Lucide, guide, onglets, drag &amp; drop, partage URL</td></tr>
+                        <tr><td>Pas de CI</td><td>Docker, GitHub Actions, Playwright E2E</td></tr>
+                        <tr><td>Doc Windows-only</td><td>README Linux, doc HTML v2.0</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Cartographie des modules</h2>
+                <pre><code>GraphicageTER/.../views.py
+    └──► routing/services/solver.py
+    └──► routing/api_views.py
+    └──► routing/auth_views.py
+
+GraphicageTER/exemple/carte-leaflet.html
+    └──► static/routing/js/app.js + features.js + auth.js
+
+GraphicageTER/exemple/dataset.json
+    └──► data/sample_dataset.json
+
+GraphicageTER/exemple/pickups-deliveries-v9.py
+    └──► solver.py mode "pdp"</code></pre>
+            </section>
+
+            <section>
+                <h2>Éléments encore ouverts</h2>
+                <ul>
+                    <li><code>USE_GOOGLE_DISTANCE_MATRIX</code> — variable d'env, pas encore dans le solver</li>
+                    <li>OSRM self-hosted — configurable via <code>OSRM_BASE_URL</code></li>
+                    <li>Comparaison drag &amp; drop vs optimal OR-Tools</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Fonctionnalités réalisées (anciennement « recommandées »)</h2>
+                <ul>
+                    <li>✅ Géocodage (Google / Nominatim)</li>
+                    <li>✅ Export GPX / CSV / impression</li>
+                    <li>✅ Authentification et sauvegarde en base</li>
+                    <li>✅ Dockerfile et CI</li>
+                    <li>✅ Catalogue admin + recherche</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

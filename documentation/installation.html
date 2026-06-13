@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>Installation</h1>
+            <p class="doc-lead">Guide pas à pas pour installer et lancer Graphicage TER en local ou via Docker.</p>
+
+            <section>
+                <h2>Prérequis</h2>
+                <ul>
+                    <li><strong>Python 3.10+</strong> (testé avec Python 3.12, 64 bits)</li>
+                    <li><strong>pip</strong> et <strong>venv</strong></li>
+                    <li>Navigateur moderne (Chrome, Firefox, Edge)</li>
+                    <li>Connexion internet (tuiles OSM, OSRM, APIs lieux)</li>
+                    <li><em>Optionnel</em> : Node.js 20+ pour les tests Playwright</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>1. Environnement virtuel</h2>
+                <h3>Linux / macOS</h3>
+                <pre><code>cd graphicage-ter-app
+python3 -m venv .venv
+source .venv/bin/activate</code></pre>
+                <h3>Windows (PowerShell)</h3>
+                <pre><code>python -m venv .venv
+.venv\Scripts\Activate.ps1</code></pre>
+            </section>
+
+            <section>
+                <h2>2. Dépendances Python</h2>
+                <pre><code>pip install -r requirements.txt</code></pre>
+                <table class="doc-table">
+                    <thead><tr><th>Paquet</th><th>Usage</th></tr></thead>
+                    <tbody>
+                        <tr><td>Django 5</td><td>Framework web, auth, admin</td></tr>
+                        <tr><td>djangorestframework</td><td>API REST</td></tr>
+                        <tr><td>ortools</td><td>Optimisation de tournées</td></tr>
+                        <tr><td>psycopg + dj-database-url</td><td>Postgres Neon</td></tr>
+                        <tr><td>gunicorn</td><td>Serveur production (Docker)</td></tr>
+                        <tr><td>python-dotenv</td><td>Variables <code>.env</code></td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>3. Configuration (.env)</h2>
+                <pre><code>cp .env.example .env</code></pre>
+                <table class="doc-table">
+                    <thead><tr><th>Variable</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>DJANGO_SECRET_KEY</code></td><td>Clé secrète (changer en production)</td></tr>
+                        <tr><td><code>DJANGO_DEBUG</code></td><td><code>True</code> en dev, <code>False</code> en prod</td></tr>
+                        <tr><td><code>DJANGO_ALLOWED_HOSTS</code></td><td>Hôtes autorisés</td></tr>
+                        <tr><td><code>DATABASE_URL</code></td><td>URL Postgres Neon (optionnel)</td></tr>
+                        <tr><td><code>OSRM_BASE_URL</code></td><td>Serveur OSRM (défaut : public)</td></tr>
+                        <tr><td><code>GOOGLE_API_KEY</code></td><td>Géocodage Google (optionnel)</td></tr>
+                        <tr><td><code>EMAIL_*</code></td><td>SMTP pour mot de passe oublié (prod)</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>4. Base de données</h2>
+                <pre><code>python manage.py migrate</code></pre>
+                <p>Sans <code>DATABASE_URL</code> : SQLite (<code>db.sqlite3</code>).</p>
+                <p>Avec Neon : ajoutez l'URL Postgres dans <code>.env</code>, puis <code>migrate</code>.</p>
+                <pre><code>python manage.py createsuperuser   # accès admin / catalogue</code></pre>
+            </section>
+
+            <section>
+                <h2>5. Lancer le serveur</h2>
+                <pre><code>python manage.py runserver</code></pre>
+                <div class="doc-alert doc-alert-info">
+                    Accueil : <a href="http://localhost:8000/">http://localhost:8000/</a><br>
+                    Application : <a href="http://localhost:8000/app/">http://localhost:8000/app/</a> (connexion requise)<br>
+                    Documentation : <a href="http://localhost:8000/documentation/">http://localhost:8000/documentation/</a>
+                </div>
+            </section>
+
+            <section>
+                <h2>6. Docker</h2>
+                <pre><code>cp .env.example .env
+docker compose up --build</code></pre>
+                <p>Expose le port <strong>8000</strong> avec Gunicorn. Les migrations s'exécutent au démarrage.</p>
+            </section>
+
+            <section>
+                <h2>7. Tests</h2>
+                <h3>Tests unitaires</h3>
+                <pre><code>python manage.py test routing</code></pre>
+                <p>Utilise SQLite en mémoire (indépendamment de Neon).</p>
+                <h3>Tests E2E (Playwright)</h3>
+                <pre><code>python manage.py runserver &
+cd e2e && npm install && npm test</code></pre>
+                <p>CI automatique via GitHub Actions (<code>.github/workflows/ci.yml</code>).</p>
+            </section>
+
+            <section>
+                <h2>Dépannage</h2>
+                <h3>Port 8000 déjà utilisé</h3>
+                <pre><code>lsof -i :8000
+kill &lt;PID&gt;
+# ou
+python manage.py runserver 8080</code></pre>
+                <h3>Migrations non appliquées</h3>
+                <pre><code>python manage.py migrate</code></pre>
+                <h3>Erreur OR-Tools</h3>
+                <p>Python 64 bits requis. Vérifier : <code>python -c "import struct; print(struct.calcsize('P')*8)"</code></p>
+                <h3><code>pipx install requirements.txt</code> ne fonctionne pas</h3>
+                <p>Utiliser un venv et <code>pip install -r requirements.txt</code>.</p>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

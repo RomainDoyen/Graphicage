@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comptes & historique — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>Comptes &amp; historique</h1>
+            <p class="doc-lead">Inscription, connexion, sécurité et sauvegarde automatique des itinéraires.</p>
+
+            <section>
+                <h2>Parcours</h2>
+                <ol>
+                    <li>Visiteur sur la <strong>landing page</strong> (<code>/</code>)</li>
+                    <li><strong>Inscription</strong> ou <strong>connexion</strong></li>
+                    <li>Accès à l'<strong>application</strong> (<code>/app/</code>)</li>
+                    <li>Chaque calcul d'itinéraire est enregistré dans l'<strong>historique</strong></li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Pages compte</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Page</th><th>URL</th></tr></thead>
+                    <tbody>
+                        <tr><td>Inscription</td><td><code>/compte/inscription/</code></td></tr>
+                        <tr><td>Connexion</td><td><code>/compte/connexion/</code></td></tr>
+                        <tr><td>Déconnexion</td><td><code>/compte/deconnexion/</code></td></tr>
+                        <tr><td>Mot de passe oublié</td><td><code>/compte/mot-de-passe-oublie/</code></td></tr>
+                        <tr><td>Réinitialisation</td><td><code>/compte/reinitialiser/&lt;uid&gt;/&lt;token&gt;/</code></td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Formulaires</h2>
+                <ul>
+                    <li>Messages d'<strong>erreur</strong> et de <strong>succès</strong> visibles (alertes colorées)</li>
+                    <li>Validation par champ (bordure rouge / verte)</li>
+                    <li>Bouton <strong>afficher / masquer</strong> le mot de passe</li>
+                    <li><strong>Spinner</strong> au envoi (évite les double-clics)</li>
+                    <li>Validateurs Django : longueur, mots de passe courants, similarité au nom d'utilisateur</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Sécurité</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Mesure</th><th>Détail</th></tr></thead>
+                    <tbody>
+                        <tr><td>Sessions</td><td>Cookies HttpOnly, SameSite=Lax, durée 2 semaines</td></tr>
+                        <tr><td>Production</td><td>Cookies Secure, HSTS si HTTPS (<code>DJANGO_DEBUG=False</code>)</td></tr>
+                        <tr><td>CSRF</td><td>Protection sur tous les POST</td></tr>
+                        <tr><td>Rate limiting</td><td>10 req/min sur login et inscription (API)</td></tr>
+                        <tr><td>Isolation</td><td>Historique et scénarios privés par utilisateur</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Historique des itinéraires</h2>
+                <p>Lorsqu'un utilisateur connecté clique sur <strong>Calculer l'itinéraire</strong>, une entrée <code>RouteHistory</code> est créée en base avec :</p>
+                <ul>
+                    <li>Points et configuration</li>
+                    <li>Résultat complet (sans les grosses matrices distance/temps)</li>
+                    <li>Résumé (distance, durée, arrêts…)</li>
+                </ul>
+                <p>Dans l'onglet <strong>Historique</strong> du panneau flottant :</p>
+                <ul>
+                    <li><strong>↺ Recharger</strong> — restaure points, config et résultat sur la carte</li>
+                    <li><strong>🗑 Supprimer</strong> — retire l'entrée</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>E-mail (mot de passe oublié)</h2>
+                <p>En développement, le lien de réinitialisation s'affiche dans la <strong>console Django</strong>.</p>
+                <p>En production, configurez SMTP dans <code>.env</code> :</p>
+                <pre><code>EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.example.com
+EMAIL_PORT=587
+EMAIL_HOST_USER=...
+EMAIL_HOST_PASSWORD=...
+EMAIL_USE_TLS=true
+DEFAULT_FROM_EMAIL=noreply@votredomaine.fr</code></pre>
+            </section>
+
+            <section>
+                <h2>Admin Django</h2>
+                <p>Via <code>/admin/</code> après <code>createsuperuser</code> :</p>
+                <ul>
+                    <li><strong>Lieux de référence</strong> (<code>CatalogPoint</code>) — alimentent la recherche</li>
+                    <li><strong>Tournées enregistrées</strong> (<code>SavedScenario</code>)</li>
+                    <li><strong>Historique</strong> (<code>RouteHistory</code>)</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>API compte (JSON)</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Endpoint</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>GET /api/auth/me/</code></td><td>Utilisateur courant</td></tr>
+                        <tr><td><code>POST /api/auth/login/</code></td><td>Connexion (session)</td></tr>
+                        <tr><td><code>POST /api/auth/logout/</code></td><td>Déconnexion</td></tr>
+                        <tr><td><code>POST /api/auth/signup/</code></td><td>Inscription</td></tr>
+                        <tr><td><code>GET /api/history/</code></td><td>Liste historique (auth requise)</td></tr>
+                        <tr><td><code>POST /api/history/&lt;id&gt;/restore/</code></td><td>Restaurer une tournée</td></tr>
+                    </tbody>
+                </table>
+                <p>Voir la page <a href="api.html">API REST</a> pour le détail.</p>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

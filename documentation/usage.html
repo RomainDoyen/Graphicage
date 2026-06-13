@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guide utilisateur — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>Guide utilisateur</h1>
+            <p class="doc-lead">De la landing page au calcul d'itinéraire optimisé.</p>
+
+            <section>
+                <h2>Avant l'application</h2>
+                <ol>
+                    <li>Ouvrez <a href="http://localhost:8000/">http://localhost:8000/</a> (landing page)</li>
+                    <li>Cliquez <strong>Créer un compte</strong> ou <strong>Connexion</strong></li>
+                    <li>Accédez à l'application via <strong>Ouvrir l'application</strong> ou <code>/app/</code></li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Interface de l'application</h2>
+                <ul>
+                    <li><strong>Sidebar (gauche)</strong> — configuration, recherche, actions, compte</li>
+                    <li><strong>Carte (centre)</strong> — OpenStreetMap, marqueurs, tracés d'itinéraires</li>
+                    <li><strong>Panneau flottant (droite)</strong> — onglets Points, Résultat, Écoles, Historique, Guide</li>
+                </ul>
+                <p>Au premier lancement, l'onglet <strong>Guide</strong> s'ouvre automatiquement. La carte démarre vide (pas de chargement auto de l'exemple).</p>
+            </section>
+
+            <section>
+                <h2>Ajouter des points</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Méthode</th><th>Description</th></tr></thead>
+                    <tbody>
+                        <tr><td>Recherche sidebar</td><td>Écoles, adresses, catalogue admin, arrêts OSM (La Réunion)</td></tr>
+                        <tr><td>Clic carte</td><td>1er point = dépôt, suivants = ramassage</td></tr>
+                        <tr><td>Charger l'exemple</td><td>Dataset Saint-Denis (7 points)</td></tr>
+                        <tr><td>Importer JSON</td><td>Fichier avec coordonnées et types</td></tr>
+                    </tbody>
+                </table>
+                <h3>Types de points</h3>
+                <table class="doc-table">
+                    <thead><tr><th>Type</th><th>Couleur</th><th>Rôle</th></tr></thead>
+                    <tbody>
+                        <tr><td>Dépôt</td><td>Bleu</td><td>Départ / retour bus</td></tr>
+                        <tr><td>Ramassage</td><td>Vert</td><td>Domicile élève</td></tr>
+                        <tr><td>École</td><td>Violet</td><td>Dépose (masquée en liste PDP, vue paires)</td></tr>
+                        <tr><td>Livraison / Arrêt</td><td>Rouge / Gris</td><td>Autres cas d'usage</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Mode Pickup &amp; Delivery (recommandé)</h2>
+                <p>Chaque <strong>ramassage</strong> doit être lié à une <strong>école</strong>. La liste affiche des paires <em>domicile → école</em>.</p>
+                <p>Consultez l'onglet <strong>Écoles</strong> pour voir le regroupement par établissement.</p>
+            </section>
+
+            <section>
+                <h2>Configuration</h2>
+                <ul>
+                    <li><strong>Capacité bus</strong> — places et nombre d'élèves par ramassage</li>
+                    <li><strong>Fenêtres horaires</strong> — créneaux par point</li>
+                    <li><strong>Créneaux par défaut</strong> — ramassage 6h30–7h30, école 7h–8h</li>
+                    <li><strong>Routes réelles (OSRM)</strong> — distances et tracés sur le réseau routier</li>
+                    <li><strong>Multi-véhicules</strong> — jusqu'à 5 bus, couleurs distinctes sur la carte</li>
+                </ul>
+            </section>
+
+            <section>
+                <h2>Calculer et exploiter le résultat</h2>
+                <p>Cliquez <strong>Calculer l'itinéraire</strong>. L'onglet Résultat affiche :</p>
+                <ul>
+                    <li>Résumé : distance, durée, arrêts, charge max, carburant / CO₂ estimés</li>
+                    <li>Séquence des arrêts par véhicule</li>
+                    <li>Tracé coloré sur la carte</li>
+                </ul>
+                <p>Barre d'outils résultats :</p>
+                <ul>
+                    <li><strong>CSV</strong> — export tableur</li>
+                    <li><strong>GPX</strong> — navigation GPS</li>
+                    <li><strong>Imprimer</strong> — feuille de route</li>
+                    <li><strong>Référence</strong> — comparer avec un scénario « avant / après »</li>
+                </ul>
+                <p>Si vous êtes connecté, le calcul est aussi sauvegardé dans <strong>Historique</strong>.</p>
+            </section>
+
+            <section>
+                <h2>Actions pratiques</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Action</th><th>Effet</th></tr></thead>
+                    <tbody>
+                        <tr><td>Annuler</td><td>Restaure l'état avant la dernière suppression</td></tr>
+                        <tr><td>Partager</td><td>Copie un lien URL encodé (<code>#t=…</code>)</td></tr>
+                        <tr><td>Enregistrer en base</td><td>Sauvegarde manuelle (compte requis)</td></tr>
+                        <tr><td>Clic label point</td><td>Zoom sur la carte</td></tr>
+                        <tr><td>Glisser-déposer</td><td>Réordonner manuellement les points</td></tr>
+                        <tr><td>Toast ×</td><td>Fermer la notification</td></tr>
+                    </tbody>
+                </table>
+                <p>L'état (points + config) est aussi persisté en <strong>localStorage</strong> entre les sessions du même navigateur.</p>
+            </section>
+
+            <section>
+                <h2>Import JSON</h2>
+                <pre><code>[
+  {
+    "id": 0,
+    "label": "Dépôt bus",
+    "type": "depot",
+    "lat": -20.8789,
+    "lng": 55.4481
+  },
+  {
+    "id": 1,
+    "label": "Domicile",
+    "type": "pickup",
+    "lat": -20.8825,
+    "lng": 55.4512,
+    "school_id": 2,
+    "demand": 1
+  },
+  {
+    "id": 2,
+    "label": "École",
+    "type": "school",
+    "lat": -20.8768,
+    "lng": 55.4495
+  }
+]</code></pre>
+            </section>
+
+            <section>
+                <h2>Limitations connues</h2>
+                <div class="doc-alert doc-alert-warning">
+                    <ul style="margin:0">
+                        <li>Serveur OSRM public — peut être lent ou indisponible ; désactiver pour Haversine</li>
+                        <li>Google Distance Matrix — variable d'env prévue, non branchée dans le solver</li>
+                        <li>Comparaison drag &amp; drop vs optimal OR-Tools — réordonnancement manuel seulement</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

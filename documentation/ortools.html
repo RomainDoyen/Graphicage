@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OR-Tools — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>OR-Tools &amp; algorithmes</h1>
+            <p class="doc-lead">Fondements mathématiques et implémentation du moteur d'optimisation.</p>
+
+            <section>
+                <h2>Contexte métier</h2>
+                <p>
+                    Le transport scolaire à La Réunion pose un problème de <strong>Vehicle Routing Problem (VRP)</strong> :
+                    un ou plusieurs bus doivent desservir des domiciles (ramassages) puis des écoles (livraisons),
+                    en minimisant la distance totale parcourue.
+                </p>
+            </section>
+
+            <section>
+                <h2>Problèmes supportés</h2>
+                <h3>TSP — Travelling Salesperson Problem</h3>
+                <p>Un véhicule visite tous les points exactement une fois et revient au dépôt. Cas d'usage : tournée simple sans contrainte ordre ramassage/dépose.</p>
+                <p>Heuristique : <code>PATH_CHEAPEST_ARC</code></p>
+
+                <h3>PDP — Pickup and Delivery Problem</h3>
+                <p>Chaque paire (ramassage, école) impose :</p>
+                <ul>
+                    <li>Le même véhicule dessert les deux points</li>
+                    <li>Le ramassage est visité <strong>avant</strong> la dépose</li>
+                </ul>
+                <p>Heuristique : <code>PARALLEL_CHEAPEST_INSERTION</code></p>
+            </section>
+
+            <section>
+                <h2>Matrice de distances</h2>
+                <p>
+                    Contrairement aux scripts originaux (<code>vrp-api-distance-google-v*.py</code>) qui utilisaient
+                    l'API Google Distance Matrix, cette version calcule les distances via la formule de
+                    <strong>Haversine</strong> (grand cercle sur la sphère terrestre).
+                </p>
+                <pre><code># routing/services/distance.py
+def haversine_meters(lat1, lng1, lat2, lng2) -> int:
+    # Rayon terrestre : 6 371 000 m
+    # Retourne la distance à vol d'oiseau arrondie en mètres</code></pre>
+                <div class="doc-alert doc-alert-info">
+                    Pour des distances routières réelles, une évolution future pourra brancher
+                    <code>GOOGLE_API_KEY</code> comme dans le dossier <code>GraphicageTER/exemple/</code>.
+                </div>
+            </section>
+
+            <section>
+                <h2>Implémentation (solver.py)</h2>
+                <pre><code>from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+
+manager = pywrapcp.RoutingIndexManager(n_nodes, num_vehicles, depot)
+routing = pywrapcp.RoutingModel(manager)
+
+# Callback de distance depuis la matrice
+transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+# Contrainte de distance max par véhicule
+routing.AddDimension(transit_callback_index, 0, max_distance, True, "Distance")
+
+# Contraintes Pickup & Delivery
+routing.AddPickupAndDelivery(pickup_index, delivery_index)
+routing.solver().Add(vehicle[pickup] == vehicle[delivery])
+routing.solver().Add(cumul[pickup] &lt;= cumul[delivery])
+
+solution = routing.SolveWithParameters(search_parameters)</code></pre>
+            </section>
+
+            <section>
+                <h2>Correspondance avec GraphicageTER/exemple/</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Script original</th><th>Équivalent dans graphicage-ter-app</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>tiny.py</code></td><td>Mode TSP, matrice 4×4 hardcodée → API dynamique</td></tr>
+                        <tr><td><code>pickups-deliveries-v9.py</code></td><td>Mode PDP dans <code>solver.py</code></td></tr>
+                        <tr><td><code>carte-leaflet.html</code></td><td><code>static/routing/js/app.js</code></td></tr>
+                        <tr><td><code>dataset.json</code></td><td><code>data/sample_dataset.json</code> (géolocalisé)</td></tr>
+                        <tr><td><code>Test_serveur_python/views.py</code></td><td><code>routing/services/solver.py</code> + API</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Ressources</h2>
+                <ul>
+                    <li><a href="https://developers.google.com/optimization/routing/tsp">OR-Tools TSP — Documentation Google</a></li>
+                    <li><a href="https://developers.google.com/optimization/routing/pickup_delivery">OR-Tools Pickup &amp; Delivery</a></li>
+                    <li><a href="https://github.com/Flaxib/voyageur-de-commerce">GraphicageTER — dépôt GitHub original</a></li>
+                </ul>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

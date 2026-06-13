@@ -1,0 +1,10 @@
+{% if form.non_field_errors %}
+<div class="auth-alert auth-alert-error" role="alert">
+    <span class="auth-alert-icon"><i data-lucide="alert-circle" aria-hidden="true"></i></span>
+    <div class="auth-alert-body">
+        {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,46 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Compte{% endblock %} — Graphicage TER</title>
+    {% include "includes/favicon.html" %}
+    <link rel="stylesheet" href="{% static 'routing/css/app.css' %}?v=14">
+</head>
+<body class="auth-page">
+    <main class="auth-shell">
+        <a href="{% url 'landing' %}" class="auth-back">
+            <i data-lucide="arrow-left" class="icon icon-sm"></i>
+            Retour à l'accueil
+        </a>
+        <div class="auth-card">
+            <header class="auth-header">
+                <span class="brand-icon"><i data-lucide="bus-front" aria-hidden="true"></i></span>
+                <h1>{% block heading %}Compte{% endblock %}</h1>
+                <p class="auth-subtitle">{% block subtitle %}{% endblock %}</p>
+            </header>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="auth-alert auth-alert-{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %}" role="alert">
+                        <span class="auth-alert-icon">
+                            {% if message.tags == 'success' %}
+                                <i data-lucide="check-circle" aria-hidden="true"></i>
+                            {% elif message.tags == 'error' %}
+                                <i data-lucide="alert-circle" aria-hidden="true"></i>
+                            {% else %}
+                                <i data-lucide="info" aria-hidden="true"></i>
+                            {% endif %}
+                        </span>
+                        <div class="auth-alert-body"><p>{{ message }}</p></div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </div>
+        <p class="auth-footer">{% block footer %}{% endblock %}</p>
+    </main>
+    <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin=""></script>
+    <script src="{% static 'routing/js/auth-forms.js' %}?v=1"></script>
+</body>
+</html>

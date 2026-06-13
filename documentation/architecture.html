@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>Architecture</h1>
+            <p class="doc-lead">Structure du projet, flux de données et responsabilités des modules.</p>
+
+            <section>
+                <h2>Vue d'ensemble</h2>
+                <div class="doc-diagram">┌──────────────────────────────────────────────────────────────┐
+│                         NAVIGATEUR                              │
+│  landing.html  →  account/*  →  routing/index.html (/app/)     │
+│  static/routing/js: app.js, features.js, auth.js, auth-forms.js│
+│  Leaflet + Lucide Icons                                         │
+└───────────────────────────┬──────────────────────────────────┘
+                            │ HTTP (HTML, JSON, sessions)
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│                      DJANGO (config/)                           │
+│  views.landing / views.app (login_required)                     │
+│  auth_views — comptes HTML + API auth/historique                │
+│  api_views — solve, places, catalog, scenarios, geocode         │
+└───────────────────────────┬──────────────────────────────────┘
+                            │
+          ┌─────────────────┼─────────────────┐
+          ▼                 ▼                 ▼
+   ┌────────────┐   ┌─────────────┐   ┌──────────────┐
+   │ Neon /     │   │ services/   │   │ OR-Tools     │
+   │ SQLite     │   │ solver,     │   │ TSP / PDP    │
+   │ models     │   │ osrm,       │   │              │
+   │            │   │ places…     │   │              │
+   └────────────┘   └─────────────┘   └──────────────┘</div>
+            </section>
+
+            <section>
+                <h2>Arborescence</h2>
+                <pre><code>graphicage-ter-app/
+├── config/settings.py
+├── routing/
+│   ├── models.py           # CatalogPoint, SavedScenario, RouteHistory
+│   ├── auth_views.py       # Comptes + historique API
+│   ├── api_views.py        # Résolution, lieux, scénarios
+│   ├── forms.py            # Login, SignUp
+│   └── services/
+│       ├── solver.py       # OR-Tools
+│       ├── osrm.py         # Routage réseau
+│       ├── places.py       # Recherche lieux
+│       └── geocoding.py    # Géocodage adresses
+├── templates/
+│   ├── landing.html
+│   ├── account/
+│   └── routing/index.html
+├── static/routing/
+├── e2e/                    # Playwright
+├── documentation/
+├── Dockerfile
+└── .github/workflows/ci.yml</code></pre>
+            </section>
+
+            <section>
+                <h2>Modèles de données</h2>
+                <table class="doc-table">
+                    <thead><tr><th>Modèle</th><th>Rôle</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>User</code> (Django)</td><td>Comptes utilisateurs</td></tr>
+                        <tr><td><code>RouteHistory</code></td><td>Historique auto par calcul (user, points, result)</td></tr>
+                        <tr><td><code>SavedScenario</code></td><td>Tournées enregistrées manuellement</td></tr>
+                        <tr><td><code>CatalogPoint</code></td><td>Lieux de référence (admin)</td></tr>
+                    </tbody>
+                </table>
+                <p>Points en cours de édition : côté client (JS + localStorage) jusqu'au calcul ou enregistrement.</p>
+            </section>
+
+            <section>
+                <h2>Flux de résolution</h2>
+                <ol>
+                    <li>Points + config envoyés en POST à <code>/api/route/solve/</code></li>
+                    <li>Validation via <code>SolveRequestSerializer</code></li>
+                    <li>Matrice distances : Haversine ou OSRM</li>
+                    <li>OR-Tools résout TSP ou PDP</li>
+                    <li>Réponse JSON : routes, summary, geometry</li>
+                    <li>Si utilisateur connecté → <code>RouteHistory</code> créé</li>
+                    <li>Frontend trace les polylignes Leaflet</li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Choix de conception</h2>
+                <ul>
+                    <li><strong>Landing + app séparées</strong> — parcours marketing puis outil authentifié</li>
+                    <li><strong>Sessions Django</strong> — auth simple, CSRF natif, pas de JWT</li>
+                    <li><strong>Vanilla JS modulaire</strong> — app.js, features.js, auth.js sans framework lourd</li>
+                    <li><strong>Neon Postgres</strong> — production ; SQLite acceptable en dev</li>
+                    <li><strong>OSRM optionnel</strong> — routes réelles vs vol d'oiseau</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

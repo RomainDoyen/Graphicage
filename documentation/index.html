@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue d'ensemble — Graphicage TER</title>
+    <link rel="icon" href="/static/routing/img/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <button class="doc-menu-toggle" aria-label="Menu">☰ Menu</button>
+    <div class="doc-layout">
+        <aside class="doc-sidebar"></aside>
+        <main class="doc-main">
+            <h1>Graphicage TER</h1>
+            <p class="doc-lead">
+                Application web d'optimisation de tournées de transport scolaire pour La Réunion,
+                migrée et modernisée depuis le projet GraphicageTER.
+            </p>
+
+            <section>
+                <h2>Présentation</h2>
+                <p>
+                    <strong>Graphicage TER</strong> aide à planifier les itinéraires de bus scolaires
+                    en calculant le parcours optimal entre un dépôt, les domiciles des élèves (ramassages)
+                    et les établissements scolaires (déposes).
+                </p>
+                <p>
+                    L'application combine une <strong>landing page</strong>, un espace <strong>compte utilisateur</strong>,
+                    une <strong>carte Leaflet</strong>, un <strong>backend Django</strong> avec API REST,
+                    une base <strong>Postgres (Neon)</strong> et le moteur <strong>Google OR-Tools</strong>.
+                </p>
+            </section>
+
+            <section>
+                <h2>Parcours utilisateur</h2>
+                <ol>
+                    <li><strong>Accueil</strong> (<code>/</code>) — découvrir le projet</li>
+                    <li><strong>Inscription ou connexion</strong> (<code>/compte/…</code>)</li>
+                    <li><strong>Application</strong> (<code>/app/</code>) — construire et optimiser une tournée</li>
+                </ol>
+            </section>
+
+            <section>
+                <h2>Fonctionnalités principales</h2>
+                <div class="doc-grid">
+                    <div class="doc-card">
+                        <h3>🗺️ Carte interactive</h3>
+                        <p>Recherche de lieux, clic sur carte, import JSON, partage par URL, persistance locale.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3>🚌 OR-Tools</h3>
+                        <p>TSP et Pickup &amp; Delivery — capacité, horaires, multi-véhicules, routage OSRM.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3>📊 Résultats &amp; exports</h3>
+                        <p>Résumé (distance, CO₂), CSV, GPX, impression, comparaison de scénarios.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3>👤 Comptes</h3>
+                        <p>Inscription, connexion, mot de passe oublié, historique automatique des calculs.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3>🗄️ Base de données</h3>
+                        <p>Neon Postgres — catalogue de lieux, tournées sauvegardées, historique par utilisateur.</p>
+                    </div>
+                    <div class="doc-card">
+                        <h3>🐳 Déploiement</h3>
+                        <p>Docker, CI GitHub Actions, tests unitaires et Playwright E2E.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2>Stack technique</h2>
+                <table class="doc-table">
+                    <thead>
+                        <tr><th>Composant</th><th>Technologie</th><th>Rôle</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Backend</td><td>Django 5 + DRF</td><td>Pages, API REST, auth, admin</td></tr>
+                        <tr><td>Base</td><td>SQLite / Neon Postgres</td><td>Utilisateurs, historique, catalogue</td></tr>
+                        <tr><td>Optimisation</td><td>OR-Tools</td><td>TSP / Pickup-Delivery</td></tr>
+                        <tr><td>Frontend</td><td>HTML, CSS, JS + Leaflet + Lucide</td><td>Landing, app carte, formulaires</td></tr>
+                        <tr><td>Distances</td><td>Haversine ou OSRM</td><td>Vol d'oiseau ou routes réelles</td></tr>
+                        <tr><td>Recherche lieux</td><td>APIs publiques + catalogue</td><td>Écoles, adresses, arrêts (974)</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section>
+                <h2>Démarrage rapide</h2>
+                <pre><code>cd graphicage-ter-app
+python3 -m venv .venv
+source .venv/bin/activate          # Linux / macOS
+pip install -r requirements.txt
+cp .env.example .env
+python manage.py migrate
+python manage.py runserver</code></pre>
+                <div class="doc-alert doc-alert-info">
+                    <strong>URLs locales</strong><br>
+                    Accueil : <a href="http://localhost:8000/">http://localhost:8000/</a><br>
+                    Application : <a href="http://localhost:8000/app/">http://localhost:8000/app/</a> (après connexion)<br>
+                    Documentation : <a href="http://localhost:8000/documentation/">http://localhost:8000/documentation/</a>
+                </div>
+            </section>
+
+            <footer class="doc-footer">
+                <p>Projet dérivé de <a href="https://github.com/Flaxib/voyageur-de-commerce">GraphicageTER</a> — Transport scolaire, La Réunion.</p>
+            </footer>
+        </main>
+    </div>
+    <script src="js/docs.js"></script>
+</body>
+</html>

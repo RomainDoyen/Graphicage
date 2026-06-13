@@ -1,0 +1,312 @@
+/* Graphicage TER — Documentation */
+
+:root {
+    --doc-bg: #f8fafc;
+    --doc-surface: #ffffff;
+    --doc-text: #1e293b;
+    --doc-muted: #64748b;
+    --doc-primary: #2563eb;
+    --doc-primary-light: #dbeafe;
+    --doc-border: #e2e8f0;
+    --doc-code-bg: #0f172a;
+    --doc-code-text: #e2e8f0;
+    --doc-sidebar-width: 280px;
+    --doc-radius: 8px;
+    --doc-font: "Segoe UI", system-ui, sans-serif;
+    --doc-mono: "Cascadia Code", "Fira Code", Consolas, monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    margin: 0;
+    font-family: var(--doc-font);
+    background: var(--doc-bg);
+    color: var(--doc-text);
+    line-height: 1.65;
+}
+
+.doc-layout {
+    display: grid;
+    grid-template-columns: var(--doc-sidebar-width) 1fr;
+    min-height: 100vh;
+}
+
+.doc-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--doc-surface);
+    border-right: 1px solid var(--doc-border);
+    padding: 1.5rem 0;
+}
+
+.doc-sidebar-header {
+    padding: 0 1.25rem 1.25rem;
+    border-bottom: 1px solid var(--doc-border);
+    margin-bottom: 1rem;
+}
+
+.doc-sidebar-header h1 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--doc-primary);
+}
+
+.doc-sidebar-header p {
+    margin: 0.25rem 0 0;
+    font-size: 0.8rem;
+    color: var(--doc-muted);
+}
+
+.doc-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.doc-nav a {
+    display: block;
+    padding: 0.5rem 1.25rem;
+    color: var(--doc-text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-left: 3px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.doc-nav a:hover {
+    background: var(--doc-primary-light);
+}
+
+.doc-nav a.active {
+    background: var(--doc-primary-light);
+    border-left-color: var(--doc-primary);
+    color: var(--doc-primary);
+    font-weight: 600;
+}
+
+.doc-nav .nav-section {
+    padding: 0.75rem 1.25rem 0.35rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--doc-muted);
+    font-weight: 600;
+}
+
+.doc-sidebar-footer {
+    margin: 1.5rem 1.25rem 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--doc-border);
+    font-size: 0.85rem;
+}
+
+.doc-sidebar-footer a {
+    color: var(--doc-primary);
+    text-decoration: none;
+}
+
+.doc-main {
+    padding: 2rem 2.5rem 4rem;
+    max-width: 900px;
+}
+
+.doc-main h1 {
+    margin: 0 0 0.5rem;
+    font-size: 2rem;
+    line-height: 1.2;
+}
+
+.doc-lead {
+    font-size: 1.1rem;
+    color: var(--doc-muted);
+    margin: 0 0 2rem;
+}
+
+.doc-main h2 {
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--doc-border);
+    font-size: 1.35rem;
+}
+
+.doc-main h3 {
+    margin: 1.75rem 0 0.75rem;
+    font-size: 1.05rem;
+}
+
+.doc-main p { margin: 0 0 1rem; }
+
+.doc-main ul, .doc-main ol {
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+}
+
+.doc-main li { margin-bottom: 0.35rem; }
+
+.doc-card {
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+    border-radius: var(--doc-radius);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.doc-card h3 {
+    margin-top: 0;
+}
+
+.doc-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.doc-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--doc-primary-light);
+    color: var(--doc-primary);
+}
+
+pre, code {
+    font-family: var(--doc-mono);
+    font-size: 0.85rem;
+}
+
+code {
+    background: #f1f5f9;
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+}
+
+pre {
+    background: var(--doc-code-bg);
+    color: var(--doc-code-text);
+    padding: 1rem 1.25rem;
+    border-radius: var(--doc-radius);
+    overflow-x: auto;
+    margin: 0 0 1rem;
+    line-height: 1.5;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+    color: inherit;
+}
+
+.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.doc-table th,
+.doc-table td {
+    border: 1px solid var(--doc-border);
+    padding: 0.6rem 0.85rem;
+    text-align: left;
+}
+
+.doc-table th {
+    background: #f1f5f9;
+    font-weight: 600;
+}
+
+.doc-table tr:nth-child(even) td {
+    background: #fafbfc;
+}
+
+.doc-alert {
+    padding: 1rem 1.25rem;
+    border-radius: var(--doc-radius);
+    margin: 1rem 0;
+    border-left: 4px solid;
+}
+
+.doc-alert-info {
+    background: #eff6ff;
+    border-color: var(--doc-primary);
+}
+
+.doc-alert-warning {
+    background: #fffbeb;
+    border-color: #f59e0b;
+}
+
+.doc-diagram {
+    background: var(--doc-surface);
+    border: 1px solid var(--doc-border);
+    border-radius: var(--doc-radius);
+    padding: 1.5rem;
+    margin: 1rem 0;
+    font-family: var(--doc-mono);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.doc-footer {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--doc-border);
+    font-size: 0.85rem;
+    color: var(--doc-muted);
+}
+
+.doc-footer a {
+    color: var(--doc-primary);
+}
+
+.doc-menu-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 100;
+    padding: 0.5rem 0.75rem;
+    background: var(--doc-primary);
+    color: #fff;
+    border: none;
+    border-radius: var(--doc-radius);
+    cursor: pointer;
+    font: inherit;
+}
+
+@media (max-width: 768px) {
+    .doc-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .doc-sidebar {
+        position: fixed;
+        left: -100%;
+        z-index: 99;
+        width: var(--doc-sidebar-width);
+        transition: left 0.25s;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+    }
+
+    .doc-sidebar.open {
+        left: 0;
+    }
+
+    .doc-menu-toggle {
+        display: block;
+    }
+
+    .doc-main {
+        padding: 4rem 1.25rem 2rem;
+    }
+}

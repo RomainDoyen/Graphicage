@@ -1,0 +1,22 @@
+{% extends "account/base.html" %}
+
+{% block title %}Connexion{% endblock %}
+{% block heading %}Connexion{% endblock %}
+{% block subtitle %}Accédez à votre historique de tournées.{% endblock %}
+
+{% block content %}
+<form method="post" class="auth-form" novalidate>
+    {% csrf_token %}
+    {% include "account/includes/form_alerts.html" %}
+    {% include "account/includes/form_field.html" with field=form.username %}
+    {% include "account/includes/form_field.html" with field=form.password %}
+    <button type="submit" class="btn btn-primary btn-submit">
+        <span class="btn-label">Se connecter</span>
+    </button>
+</form>
+{% endblock %}
+
+{% block footer %}
+    Pas encore de compte ? <a href="{% url 'account-signup' %}">Créer un compte</a><br>
+    <a href="{% url 'account-password-reset' %}">Mot de passe oublié</a>
+{% endblock %}
