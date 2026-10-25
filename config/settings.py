@@ -123,6 +123,10 @@ LOGIN_URL = 'account-login'
 LOGIN_REDIRECT_URL = 'app'
 LOGOUT_REDIRECT_URL = 'landing'
 
+# same-origin (défaut Django) retire le Referer vers tile.openstreetmap.org,
+# et les serveurs OSM renvoient alors la tuile « Access blocked ».
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14

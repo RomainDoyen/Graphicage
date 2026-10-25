@@ -9,11 +9,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
-    <link rel="stylesheet" href="{% static 'routing/css/app.css' %}?v=14">
+    <link rel="stylesheet" href="{% static 'routing/css/app.css' %}?v=30">
 </head>
 <body>
     <div class="app-shell">
-        <aside class="sidebar">
+        <aside class="sidebar" id="app-sidebar">
             <header class="sidebar-header">
                 <div class="brand">
                     <span class="brand-icon"><i data-lucide="bus-front" aria-hidden="true"></i></span>
@@ -22,6 +22,9 @@
                         <p>Transport scolaire — La Réunion</p>
                     </div>
                 </div>
+                <button type="button" id="sidebar-collapse" class="sidebar-collapse" aria-expanded="true" aria-controls="app-sidebar" aria-label="Replier le panneau">
+                    <i data-lucide="panel-left-close" aria-hidden="true"></i>
+                </button>
             </header>
 
             <section class="panel panel-auth" id="auth-panel" aria-label="Compte utilisateur">
@@ -45,7 +48,7 @@
                         </span>
                         <div class="guide-step-body">
                             <strong>Ajouter des points</strong>
-                            <span>Recherchez un lieu, cliquez sur la carte ou chargez l'exemple.</span>
+                            <span>Choisissez le type au-dessus de la légende, puis cliquez sur la carte. La recherche et l'import restent disponibles.</span>
                         </div>
                     </li>
                     <li class="guide-step" data-step="types">
@@ -191,7 +194,20 @@
         </aside>
 
         <main class="map-area">
+            <button type="button" id="sidebar-toggle" class="sidebar-toggle" hidden aria-label="Ouvrir le panneau">
+                <i data-lucide="panel-left-open" aria-hidden="true"></i>
+            </button>
             <div id="map"></div>
+
+            <div class="map-stack">
+            <div class="map-type-picker" id="map-type-picker">
+                <button type="button" class="map-type-toggle is-placeholder" id="map-click-type-toggle" aria-expanded="false" aria-controls="map-click-type">
+                    <span class="point-icon" id="map-click-type-icon" aria-hidden="true" hidden></span>
+                    <span id="map-click-type-label">Sélectionner le type de point</span>
+                    <i data-lucide="chevron-down" class="icon icon-sm map-type-chevron" aria-hidden="true"></i>
+                </button>
+                <div class="map-type-options" id="map-click-type" role="group" aria-label="Types de points" hidden></div>
+            </div>
 
             <div id="map-legend" class="map-legend" aria-label="Légende de la carte">
                 <h4 class="map-legend-title">Légende</h4>
@@ -199,10 +215,15 @@
                     <p class="legend-subtitle">Types de points</p>
                     <ul class="legend-list" id="legend-points"></ul>
                 </div>
+                <div class="legend-section" id="legend-gpx-section" hidden>
+                    <p class="legend-subtitle">Tracé GPX</p>
+                    <ul class="legend-list" id="legend-gpx"></ul>
+                </div>
                 <div class="legend-section" id="legend-routes-section" hidden>
                     <p class="legend-subtitle">Itinéraires</p>
                     <ul class="legend-list" id="legend-routes"></ul>
                 </div>
+            </div>
             </div>
 
             <button type="button" id="panel-toggle" class="panel-toggle" aria-label="Ouvrir le panneau des points" hidden>
@@ -218,6 +239,9 @@
                         </button>
                         <button type="button" class="floating-tab" role="tab" id="tab-btn-results" aria-selected="false" aria-controls="tab-results" data-tab="results">
                             Résultat
+                        </button>
+                        <button type="button" class="floating-tab" role="tab" id="tab-btn-gpx" aria-selected="false" aria-controls="tab-gpx" data-tab="gpx">
+                            GPX
                         </button>
                         <button type="button" class="floating-tab" role="tab" id="tab-btn-schools" aria-selected="false" aria-controls="tab-schools" data-tab="schools">
                             Écoles
@@ -261,6 +285,31 @@
                             </button>
                         </div>
                         <div id="results-content"></div>
+                    </section>
+
+                    <section class="floating-tab-panel" id="tab-gpx" role="tabpanel" aria-labelledby="tab-btn-gpx" hidden>
+                        <div class="gpx-panel">
+                            <p class="gpx-lead">Chargez un fichier GPX pour afficher son tracé sur la carte, sans modifier les points de la tournée.</p>
+                            <input type="file" id="gpx-file" accept=".gpx,application/gpx+xml,application/xml,.xml" hidden>
+                            <div class="gpx-actions">
+                                <button type="button" id="btn-load-gpx" class="btn btn-secondary">
+                                    <i data-lucide="upload" class="icon" aria-hidden="true"></i>
+                                    Choisir un fichier GPX
+                                </button>
+                                <button type="button" id="btn-export-gpx-all" class="btn btn-ghost">
+                                    <i data-lucide="download" class="icon" aria-hidden="true"></i>
+                                    Exporter tout
+                                </button>
+                            </div>
+                            <div id="gpx-summary" hidden>
+                                <p class="gpx-file-name" id="gpx-file-name"></p>
+                                <ul id="gpx-tracks" class="gpx-tracks"></ul>
+                                <button type="button" id="btn-clear-gpx" class="btn btn-ghost">
+                                    <i data-lucide="x" class="icon" aria-hidden="true"></i>
+                                    Retirer le tracé
+                                </button>
+                            </div>
+                        </div>
                     </section>
 
                     <section class="floating-tab-panel" id="tab-schools" role="tabpanel" aria-labelledby="tab-btn-schools" hidden>
@@ -364,8 +413,8 @@
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
     <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin=""></script>
-    <script src="{% static 'routing/js/features.js' %}?v=2"></script>
+    <script src="{% static 'routing/js/features.js' %}?v=5"></script>
     <script src="{% static 'routing/js/auth.js' %}?v=1"></script>
-    <script src="{% static 'routing/js/app.js' %}?v=13"></script>
+    <script src="{% static 'routing/js/app.js' %}?v=24"></script>
 </body>
 </html>

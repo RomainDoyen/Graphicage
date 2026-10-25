@@ -122,21 +122,57 @@
         return defaults[type] || null;
     }
 
-    function buildGpx(routes) {
+    function xmlEscape(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function appendGpxTrack(lines, name, coords) {
+        const usable = (coords || []).filter(pair => Number.isFinite(Number(pair[0])) && Number.isFinite(Number(pair[1])));
+        if (usable.length < 2) return;
+        lines.push(`  <trk><name>${xmlEscape(name)}</name><trkseg>`);
+        usable.forEach(([lat, lng]) => {
+            lines.push(`    <trkpt lat="${lat}" lon="${lng}"></trkpt>`);
+        });
+        lines.push('  </trkseg></trk>');
+    }
+
+    function buildGpx({ points = [], routes = [], tracks = [] } = {}) {
         const lines = [
             '<?xml version="1.0" encoding="UTF-8"?>',
             '<gpx version="1.1" creator="Graphicage TER" xmlns="http://www.topografix.com/GPX/1/1">',
         ];
+
+        points.forEach((point) => {
+            const lat = Number(point.lat);
+            const lng = Number(point.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+            const school = points.find(other => other.id === point.school_id);
+            const attrs = [`demand="${Number(point.demand) || 1}"`];
+            if (school?.label) attrs.push(`school="${xmlEscape(school.label)}"`);
+            if (point.time_window_start != null) attrs.push(`tw-start="${point.time_window_start}"`);
+            if (point.time_window_end != null) attrs.push(`tw-end="${point.time_window_end}"`);
+            lines.push(`  <wpt lat="${lat}" lon="${lng}">`);
+            lines.push(`    <name>${xmlEscape(point.label || 'Point')}</name>`);
+            if (point.type) lines.push(`    <type>${xmlEscape(point.type)}</type>`);
+            lines.push(`    <extensions><graphicage ${attrs.join(' ')}/></extensions>`);
+            lines.push('  </wpt>');
+        });
+
         routes.forEach((route, idx) => {
-            lines.push(`  <trk><name>Véhicule ${route.vehicle_id + 1}</name><trkseg>`);
             const coords = route.geometry?.length >= 2
                 ? route.geometry
-                : route.points.map(p => [p.lat, p.lng]);
-            coords.forEach(([lat, lng]) => {
-                lines.push(`    <trkpt lat="${lat}" lon="${lng}"></trkpt>`);
-            });
-            lines.push('  </trkseg></trk>');
+                : (route.points || []).map(p => [p.lat, p.lng]);
+            appendGpxTrack(lines, `Véhicule ${(route.vehicle_id ?? idx) + 1}`, coords);
         });
+
+        tracks.forEach((track, idx) => {
+            appendGpxTrack(lines, track.name || `Tracé ${idx + 1}`, track.points);
+        });
+
         lines.push('</gpx>');
         return lines.join('\n');
     }
@@ -160,23 +196,33 @@
     }
 
     function downloadText(content, filename, mime) {
-        const blob = new Blob([content], { type: mime });
+        const blob = new Blob([content], { type: mime || 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
+        link.rel = 'noopener';
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1500);
     }
 
     function exportGpx() {
-        if (!lastSolveResult?.routes?.length) {
-            bridge.showToast('Calculez un itinéraire avant d\'exporter le GPX.', 'error');
+        const points = bridge.getPoints?.() || [];
+        const routes = lastSolveResult?.routes || [];
+        const tracks = bridge.getGpxTracks?.() || [];
+        if (!points.length && !routes.length && !tracks.length) {
+            bridge.showToast('Ajoutez des points ou un tracé avant d\'exporter le GPX.', 'error');
             return;
         }
         const date = new Date().toISOString().slice(0, 10);
-        downloadText(buildGpx(lastSolveResult.routes), `graphicage-ter-${date}.gpx`, 'application/gpx+xml');
-        bridge.showToast('GPX exporté.', 'success');
+        downloadText(
+            buildGpx({ points, routes, tracks }),
+            `graphicage-ter-${date}.gpx`,
+            'application/gpx+xml',
+        );
+        bridge.showToast('GPX exporté : points et tracés.', 'success');
     }
 
     function exportCsv() {
@@ -383,8 +429,8 @@
         decoratePointItem(li, index) {
             li.dataset.index = String(index);
             li.classList.add('point-item-draggable');
-            li.querySelector('.point-label, .point-pair-label')?.addEventListener('click', () => {
-                focusPointOnMap(index);
+            li.querySelectorAll('.point-icon').forEach((iconEl) => {
+                iconEl.addEventListener('click', () => focusPointOnMap(index));
             });
         },
     };

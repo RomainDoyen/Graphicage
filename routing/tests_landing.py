@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -22,3 +25,13 @@ class LandingAndAppAccessTests(TestCase):
         self.client.login(username='driver', password='SecurePass123!')
         response = self.client.get(reverse('app'))
         self.assertEqual(response.status_code, 200)
+
+    def test_map_page_identifies_itself_to_osm_tiles(self):
+        self.client.login(username='driver', password='SecurePass123!')
+        response = self.client.get(reverse('app'))
+        self.assertEqual(response['Referrer-Policy'], 'strict-origin-when-cross-origin')
+
+        script = Path(settings.BASE_DIR, 'static', 'routing', 'js', 'app.js').read_text(encoding='utf-8')
+        self.assertIn('https://tile.openstreetmap.org/{z}/{x}/{y}.png', script)
+        self.assertNotIn('{s}.tile.openstreetmap.org', script)
+        self.assertIn("referrerPolicy = 'strict-origin-when-cross-origin'", script)

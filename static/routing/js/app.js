@@ -6,13 +6,6 @@
     'use strict';
 
     const config = window.GRAPHICAGE_CONFIG;
-    const TYPE_COLORS = {
-        depot: '#3b82f6',
-        pickup: '#22c55e',
-        delivery: '#ef4444',
-        school: '#a855f7',
-        stop: '#8fa3bc',
-    };
 
     const TYPE_LABELS = {
         depot: 'Dépôt',
@@ -55,6 +48,8 @@
     let points = [];
     let markers = new Map();
     let routeLayers = [];
+    let gpxLayers = [];
+    let loadedGpxTracks = [];
     let activeRoutesMeta = [];
 
     const GUIDE_STEP_ICONS = {
@@ -97,6 +92,10 @@
         btnSolve: document.getElementById('btn-solve'),
         pointsList: document.getElementById('points-list'),
         pointCount: document.getElementById('point-count'),
+        sidebar: document.getElementById('app-sidebar'),
+        sidebarCollapse: document.getElementById('sidebar-collapse'),
+        sidebarToggle: document.getElementById('sidebar-toggle'),
+        appShell: document.querySelector('.app-shell'),
         panelToggle: document.getElementById('panel-toggle'),
         panelToggleLabel: document.getElementById('panel-toggle-label'),
         detailsPanel: document.getElementById('details-panel'),
@@ -110,12 +109,27 @@
         legendPoints: document.getElementById('legend-points'),
         legendRoutes: document.getElementById('legend-routes'),
         legendRoutesSection: document.getElementById('legend-routes-section'),
+        legendGpx: document.getElementById('legend-gpx'),
+        legendGpxSection: document.getElementById('legend-gpx-section'),
+        tabBtnGpx: document.getElementById('tab-btn-gpx'),
+        gpxFile: document.getElementById('gpx-file'),
+        btnLoadGpx: document.getElementById('btn-load-gpx'),
+        btnExportGpxAll: document.getElementById('btn-export-gpx-all'),
+        btnClearGpx: document.getElementById('btn-clear-gpx'),
+        gpxSummary: document.getElementById('gpx-summary'),
+        gpxFileName: document.getElementById('gpx-file-name'),
+        gpxTracks: document.getElementById('gpx-tracks'),
         appLoader: document.getElementById('app-loader'),
         loaderDesc: document.getElementById('loader-desc'),
         placeSearchInput: document.getElementById('place-search-input'),
         placeSearchType: document.getElementById('place-search-type'),
         placeSearchResults: document.getElementById('place-search-results'),
         placeSearchStatus: document.getElementById('place-search-status'),
+        mapTypePicker: document.getElementById('map-type-picker'),
+        mapClickTypeToggle: document.getElementById('map-click-type-toggle'),
+        mapClickTypeIcon: document.getElementById('map-click-type-icon'),
+        mapClickType: document.getElementById('map-click-type'),
+        mapClickTypeLabel: document.getElementById('map-click-type-label'),
         guideSteps: document.querySelectorAll('.guide-step'),
         workflowStatus: document.getElementById('workflow-status'),
         toastMessage: document.querySelector('#toast .toast-message'),
@@ -133,6 +147,7 @@
     let placeSearchTimer = null;
     let placeSearchRequestId = 0;
     let lastPlaceSearchResults = [];
+    let mapClickType = null;
 
     let lastSolveData = null;
 
@@ -545,19 +560,21 @@
     }
 
     function createIcon(type) {
-        const color = TYPE_COLORS[type] || TYPE_COLORS.stop;
+        const kind = TYPE_ICONS[type] ? type : 'stop';
         return L.divIcon({
-            className: 'custom-marker',
-            html: `<div style="
-                width:14px;height:14px;
-                background:${color};
-                border:2px solid #fff;
-                border-radius:50%;
-                box-shadow:0 2px 6px rgba(0,0,0,0.4);
-            "></div>`,
-            iconSize: [14, 14],
-            iconAnchor: [7, 7],
+            className: 'map-point-marker',
+            html: `<span class="point-icon ${kind}" title="${TYPE_LABELS[kind]}">${icon(TYPE_ICONS[kind], 'icon icon-type')}</span>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -18],
         });
+    }
+
+    function paintMarkerIcon(marker) {
+        const el = marker.getElement();
+        if (el) {
+            refreshIcons(el);
+        }
     }
 
     function buildSchoolOptions(selectedSchoolId) {
@@ -569,18 +586,6 @@
             const selected = school.id === selectedSchoolId ? 'selected' : '';
             return `<option value="${school.id}" ${selected}>${escapeHtml(school.label)}</option>`;
         }).join('');
-    }
-
-    function shortenLabel(label, type) {
-        const prefixes = {
-            depot: 'Dépôt bus — ',
-            pickup: 'Domicile — ',
-        };
-        const prefix = prefixes[type];
-        if (prefix && label.startsWith(prefix)) {
-            return label.slice(prefix.length);
-        }
-        return label;
     }
 
     function buildPointExtraFields(point, index, showCapacity, showTimeWindows) {
@@ -655,7 +660,7 @@
         return `
             <div class="point-item-header">
                 <span class="point-icon ${point.type}">${icon(TYPE_ICONS[point.type] || TYPE_ICONS.stop, 'icon icon-type')}</span>
-                <span class="point-label" title="${escapeHtml(point.label)}">${escapeHtml(point.label)}</span>
+                ${pointLabelField(point, index, 'point-label')}
                 <div class="point-item-actions">
                     <select class="point-type-select" data-index="${index}" aria-label="Type du point">
                         ${Object.keys(TYPE_LABELS).map(t =>
@@ -673,7 +678,7 @@
         return `
             <div class="point-item-header point-item-header-compact">
                 <span class="point-icon depot">${icon(TYPE_ICONS.depot, 'icon icon-type')}</span>
-                <span class="point-label" title="${escapeHtml(point.label)}">${escapeHtml(shortenLabel(point.label, 'depot'))}</span>
+                ${pointLabelField(point, index, 'point-label')}
                 <span class="point-type-tag">${icon('warehouse', 'icon icon-xs')} Dépôt</span>
                 ${removeButton(index)}
             </div>
@@ -681,14 +686,12 @@
     }
 
     function buildPickupPairRow(point, index, showCapacity, showTimeWindows) {
-        const pickupLabel = shortenLabel(point.label, 'pickup');
-
         return `
             <div class="point-pair-header">
                 <div class="point-pair-path">
                     <div class="point-pair-origin">
                         <span class="point-icon pickup">${icon(TYPE_ICONS.pickup, 'icon icon-type')}</span>
-                        <span class="point-pair-label" title="${escapeHtml(point.label)}">${escapeHtml(pickupLabel)}</span>
+                        ${pointLabelField(point, index, 'point-pair-label')}
                     </div>
                     <span class="point-pair-arrow" aria-hidden="true">${icon('arrow-right', 'icon icon-sm')}</span>
                     <div class="point-pair-dest">
@@ -756,6 +759,7 @@
                 }
                 updateMarker(idx);
                 renderPointsList();
+                syncMapClickTypeUi();
                 notifyStateChange();
             });
         });
@@ -800,6 +804,58 @@
                 removePoint(Number(e.currentTarget.dataset.index));
             });
         });
+
+        els.pointsList.querySelectorAll('.point-label-input').forEach(input => {
+            const row = input.closest('.point-item');
+            input.addEventListener('mousedown', () => {
+                if (row) row.draggable = false;
+            });
+            input.addEventListener('blur', () => {
+                if (row) row.draggable = true;
+            });
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    input.blur();
+                }
+            });
+            input.addEventListener('change', (e) => {
+                commitPointLabel(Number(e.target.dataset.index), e.target.value);
+                renderPointsList();
+            });
+        });
+    }
+
+    function pointLabelField(point, index, className) {
+        return `<input class="point-label-input ${className}" data-index="${index}" type="text" maxlength="120" value="${escapeHtml(point.label)}" aria-label="Nom du point" draggable="false" autocomplete="off">`;
+    }
+
+    function commitPointLabel(index, rawLabel) {
+        const point = points[index];
+        if (!point) return '';
+        const label = String(rawLabel || '').trim().slice(0, 120);
+        if (!label || label === point.label) return point.label;
+        point.label = label;
+        syncMarkerLabel(point);
+        renderSchoolGroups();
+        notifyStateChange();
+        return label;
+    }
+
+    function syncMarkerLabel(point) {
+        const marker = markers.get(point.id);
+        if (!marker) return;
+        marker.options.title = point.label;
+        const el = marker.getElement();
+        if (el) el.title = point.label;
+        if (!marker.isPopupOpen()) return;
+        const popupEl = marker.getPopup().getElement();
+        const titleEl = popupEl?.querySelector('.map-popup-title');
+        if (titleEl) titleEl.textContent = point.label;
+        const nameInput = popupEl?.querySelector('.map-popup-label');
+        if (nameInput && document.activeElement !== nameInput) {
+            nameInput.value = point.label;
+        }
     }
 
     function buildPopupContent(point) {
@@ -842,6 +898,10 @@
                     <span class="map-popup-badge ${type}">${escapeHtml(typeLabel)}</span>
                     <h3 class="map-popup-title">${escapeHtml(point.label)}</h3>
                 </div>
+                <label class="map-popup-name">
+                    <span>Nom</span>
+                    <input class="map-popup-label" type="text" maxlength="120" value="${escapeHtml(point.label)}" aria-label="Nom du point" autocomplete="off">
+                </label>
                 <dl class="map-popup-meta">
                     <div class="map-popup-row">
                         <dt>Coordonnées</dt>
@@ -881,15 +941,36 @@
                     map.closePopup();
                 };
             }
+
+            const nameInput = popupEl?.querySelector('.map-popup-label');
+            if (nameInput) {
+                nameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        nameInput.blur();
+                    }
+                });
+                nameInput.addEventListener('change', () => {
+                    commitPointLabel(index, nameInput.value);
+                    nameInput.value = points[index]?.label || '';
+                    const titleEl = popupEl.querySelector('.map-popup-title');
+                    if (titleEl && points[index]) titleEl.textContent = points[index].label;
+                    renderPointsList();
+                });
+            }
         });
     }
 
     function createMarkerForPoint(point, index) {
         const marker = L.marker([point.lat, point.lng], {
             icon: createIcon(point.type),
+            title: point.label || TYPE_LABELS[point.type] || 'Point',
+            alt: TYPE_LABELS[point.type] || 'Point',
+            keyboard: true,
         }).addTo(map);
         marker._pointIndex = index;
         attachMarkerPopup(marker);
+        paintMarkerIcon(marker);
         return marker;
     }
 
@@ -933,6 +1014,7 @@
         if (marker) {
             marker._pointIndex = index;
             marker.setIcon(createIcon(point.type));
+            paintMarkerIcon(marker);
             if (marker.isPopupOpen()) {
                 marker.setPopupContent(buildPopupContent(point));
             }
@@ -991,6 +1073,7 @@
         }
 
         points.push(point);
+        syncMapClickTypeUi();
 
         const marker = createMarkerForPoint(point, points.length - 1);
 
@@ -1016,6 +1099,7 @@
         rebuildMarkers();
         renderPointsList();
         renderSchoolGroups();
+        syncMapClickTypeUi();
         clearRoutes();
 
         if (!options.silent) {
@@ -1042,6 +1126,7 @@
         clearResults();
         renderPointsList();
         renderSchoolGroups();
+        syncMapClickTypeUi();
         if (!options.silent) {
             notifyStateChange();
         }
@@ -1474,6 +1559,234 @@
         }
     }
 
+    const GPX_COLOR = '#0ea5e9';
+
+    function haversineMeters(a, b) {
+        const R = 6371000;
+        const toRad = (deg) => deg * Math.PI / 180;
+        const dLat = toRad(b[0] - a[0]);
+        const dLon = toRad(b[1] - a[1]);
+        const lat1 = toRad(a[0]);
+        const lat2 = toRad(b[0]);
+        const h = Math.sin(dLat / 2) ** 2
+            + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+
+    function polylineLength(latlngs) {
+        let meters = 0;
+        for (let i = 1; i < latlngs.length; i += 1) {
+            meters += haversineMeters(latlngs[i - 1], latlngs[i]);
+        }
+        return Math.round(meters);
+    }
+
+    function elementName(el) {
+        const child = [...el.children].find(node => node.localName === 'name');
+        return child?.textContent?.trim() || '';
+    }
+
+    function childText(el, localName) {
+        const child = [...el.children].find(node => node.localName === localName);
+        return child?.textContent?.trim() || '';
+    }
+
+    function readGpxWaypoints(doc) {
+        return [...doc.getElementsByTagName('wpt')].map(wpt => {
+            const lat = Number(wpt.getAttribute('lat'));
+            const lng = Number(wpt.getAttribute('lon'));
+            const meta = [...wpt.getElementsByTagName('*')].find(node => node.localName === 'graphicage');
+            const type = childText(wpt, 'type');
+            const demand = Number(meta?.getAttribute('demand'));
+            const twStart = Number(meta?.getAttribute('tw-start'));
+            const twEnd = Number(meta?.getAttribute('tw-end'));
+            return {
+                lat,
+                lng,
+                label: elementName(wpt) || childText(wpt, 'name') || 'Point',
+                type: VALID_POINT_TYPES.has(type) ? type : 'stop',
+                demand: Number.isFinite(demand) && demand > 0 ? demand : 1,
+                school: meta?.getAttribute('school') || '',
+                timeWindowStart: Number.isFinite(twStart) ? twStart : null,
+                timeWindowEnd: Number.isFinite(twEnd) ? twEnd : null,
+            };
+        }).filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+    }
+
+    function readGpxPoints(parent, tagName) {
+        return [...parent.getElementsByTagName(tagName)].map(point => [
+            Number(point.getAttribute('lat')),
+            Number(point.getAttribute('lon')),
+        ]).filter(([lat, lon]) => Number.isFinite(lat) && Number.isFinite(lon));
+    }
+
+    function parseGpx(text) {
+        const doc = new DOMParser().parseFromString(text, 'application/xml');
+        if (doc.querySelector('parsererror')) {
+            throw new Error('Fichier GPX illisible.');
+        }
+
+        const tracks = [];
+        [...doc.getElementsByTagName('trk')].forEach((trk, index) => {
+            const baseName = elementName(trk) || `Tracé ${index + 1}`;
+            const segments = [...trk.getElementsByTagName('trkseg')];
+            const sources = segments.length ? segments : [trk];
+            sources.forEach((source, segIndex) => {
+                const points = readGpxPoints(source, 'trkpt');
+                if (points.length < 2) return;
+                tracks.push({
+                    name: sources.length > 1 ? `${baseName} (${segIndex + 1})` : baseName,
+                    points,
+                });
+            });
+        });
+
+        if (!tracks.length) {
+            [...doc.getElementsByTagName('rte')].forEach((rte, index) => {
+                const points = readGpxPoints(rte, 'rtept');
+                if (points.length >= 2) {
+                    tracks.push({
+                        name: elementName(rte) || `Route ${index + 1}`,
+                        points,
+                    });
+                }
+            });
+        }
+
+        return {
+            tracks: tracks.map(track => ({
+                ...track,
+                distance: polylineLength(track.points),
+            })),
+            waypoints: readGpxWaypoints(doc),
+        };
+    }
+
+    function clearGpxLayers() {
+        gpxLayers.forEach(layer => map.removeLayer(layer));
+        gpxLayers = [];
+    }
+
+    function updateGpxLegend(tracks) {
+        if (!els.legendGpxSection || !els.legendGpx) return;
+        if (!tracks?.length) {
+            els.legendGpxSection.hidden = true;
+            els.legendGpx.innerHTML = '';
+            return;
+        }
+        els.legendGpxSection.hidden = false;
+        els.legendGpx.innerHTML = tracks.map(track => `
+            <li class="legend-item">
+                <span class="legend-line dashed" style="color: ${GPX_COLOR}"></span>
+                <span>${escapeHtml(track.name)}</span>
+            </li>
+        `).join('');
+    }
+
+    function clearGpx() {
+        loadedGpxTracks = [];
+        clearGpxLayers();
+        updateGpxLegend([]);
+        if (els.gpxSummary) els.gpxSummary.hidden = true;
+        if (els.gpxTracks) els.gpxTracks.innerHTML = '';
+        if (els.gpxFileName) els.gpxFileName.textContent = '';
+        if (els.gpxFile) els.gpxFile.value = '';
+        els.tabBtnGpx?.classList.remove('has-result');
+    }
+
+    function showGpxTracks(tracks, fileName) {
+        loadedGpxTracks = tracks;
+        clearGpxLayers();
+        tracks.forEach(track => {
+            const line = L.polyline(track.points, {
+                color: GPX_COLOR,
+                weight: 4,
+                opacity: 0.9,
+                dashArray: '7 6',
+            }).addTo(map);
+            gpxLayers.push(line);
+        });
+        updateGpxLegend(tracks);
+        if (gpxLayers.length) {
+            map.fitBounds(L.featureGroup(gpxLayers).getBounds(), { padding: [50, 50] });
+        }
+
+        if (els.gpxFileName) els.gpxFileName.textContent = fileName;
+        if (els.gpxTracks) {
+            els.gpxTracks.innerHTML = tracks.map(track => `
+                <li>
+                    <strong>${escapeHtml(track.name)}</strong>
+                    <span>${track.points.length} points · ${escapeHtml(formatDistance(track.distance))}</span>
+                </li>
+            `).join('');
+        }
+        if (els.gpxSummary) els.gpxSummary.hidden = false;
+        els.tabBtnGpx?.classList.add('has-result');
+    }
+
+    function importGpxWaypoints(waypoints) {
+        const created = [];
+        waypoints.forEach(waypoint => {
+            if (isPlaceOnMap(waypoint.lat, waypoint.lng)) return;
+            const point = addPoint(waypoint.lat, waypoint.lng, {
+                label: waypoint.label,
+                type: waypoint.type,
+                demand: waypoint.demand,
+                time_window_start: waypoint.timeWindowStart,
+                time_window_end: waypoint.timeWindowEnd,
+                silent: true,
+            });
+            created.push({ point, school: waypoint.school });
+        });
+        created.forEach(({ point, school }) => {
+            if (point.type !== 'pickup' || !school) return;
+            const match = points.find(candidate => candidate.type === 'school' && candidate.label === school);
+            if (match) point.school_id = match.id;
+        });
+        if (created.length) {
+            renderPointsList();
+            renderSchoolGroups();
+            notifyStateChange();
+        }
+        return created.length;
+    }
+
+    function loadGpxFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const parsed = parseGpx(String(reader.result));
+                const added = importGpxWaypoints(parsed.waypoints);
+                if (!parsed.tracks.length && !parsed.waypoints.length) {
+                    throw new Error('Aucun point ni tracé dans ce fichier GPX.');
+                }
+                if (parsed.tracks.length) {
+                    showGpxTracks(parsed.tracks, file.name);
+                } else {
+                    clearGpx();
+                    if (points.length) {
+                        map.fitBounds(L.latLngBounds(points.map(p => [p.lat, p.lng])), { padding: [50, 50] });
+                    }
+                }
+                const parts = [];
+                if (added) parts.push(`${added} point(s)`);
+                if (parsed.tracks.length) parts.push(`${parsed.tracks.length} tracé(s)`);
+                showToast(`GPX chargé : ${parts.join(' et ')}.`, 'success');
+                expandPanel(added ? 'points' : 'gpx');
+            } catch (err) {
+                showToast(err.message || 'Impossible de lire ce GPX.', 'error');
+            } finally {
+                if (els.gpxFile) els.gpxFile.value = '';
+            }
+        };
+        reader.onerror = () => {
+            showToast('Impossible de lire le fichier.', 'error');
+            if (els.gpxFile) els.gpxFile.value = '';
+        };
+        reader.readAsText(file);
+    }
+
     function toggleConstraintFields() {
         els.capacityField.hidden = !els.enableCapacity.checked;
         const osrmHandlesTime = els.useRoadRouting.checked && els.enableTimeWindows.checked;
@@ -1634,15 +1947,32 @@
 
     function initMap() {
         map = L.map('map').setView(config.mapCenter, config.mapZoom);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        }).addTo(map);
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        });
+        tiles.createTile = function (coords, done) {
+            const tile = document.createElement('img');
+            tile.referrerPolicy = 'strict-origin-when-cross-origin';
+            tile.alt = '';
+            L.DomEvent.on(tile, 'load', L.Util.bind(this._tileOnLoad, this, done, tile));
+            L.DomEvent.on(tile, 'error', L.Util.bind(this._tileOnError, this, done, tile));
+            tile.src = this.getTileUrl(coords);
+            return tile;
+        };
+        tiles.addTo(map);
 
         map.on('click', (e) => {
+            const type = activeMapClickType();
+            if (!type) {
+                setMapClickTypeOpen(true);
+                syncMapClickTypeUi();
+                showToast('Sélectionnez un type de point.', 'info');
+                return;
+            }
             addPoint(e.latlng.lat, e.latlng.lng, {
-                label: `Arrêt ${points.length}`,
-                type: points.length === 0 ? 'depot' : 'pickup',
+                label: nextClickLabel(type),
+                type,
             });
         });
 
@@ -1662,6 +1992,25 @@
 
         els.panelMinimize.addEventListener('click', minimizePanel);
         els.panelToggle.addEventListener('click', () => expandPanel('points'));
+        els.sidebarCollapse?.addEventListener('click', collapseSidebar);
+        els.sidebarToggle?.addEventListener('click', expandSidebar);
+    }
+
+    function collapseSidebar() {
+        els.sidebar?.classList.add('is-collapsed');
+        els.appShell?.classList.add('sidebar-collapsed');
+        if (els.sidebarToggle) els.sidebarToggle.hidden = false;
+        els.sidebarCollapse?.setAttribute('aria-expanded', 'false');
+        refreshIcons(els.sidebarToggle);
+        requestAnimationFrame(refreshMapSize);
+    }
+
+    function expandSidebar() {
+        els.sidebar?.classList.remove('is-collapsed');
+        els.appShell?.classList.remove('sidebar-collapsed');
+        if (els.sidebarToggle) els.sidebarToggle.hidden = true;
+        els.sidebarCollapse?.setAttribute('aria-expanded', 'true');
+        requestAnimationFrame(refreshMapSize);
     }
 
     function bindEvents() {
@@ -1684,6 +2033,15 @@
         });
         els.btnExportCsv?.addEventListener('click', () => GraphicageFeatures.exportCsv());
         els.btnExportGpx?.addEventListener('click', () => GraphicageFeatures.exportGpx());
+        els.btnLoadGpx?.addEventListener('click', () => els.gpxFile?.click());
+        els.btnExportGpxAll?.addEventListener('click', () => GraphicageFeatures.exportGpx());
+        els.gpxFile?.addEventListener('change', (event) => {
+            loadGpxFile(event.target.files?.[0]);
+        });
+        els.btnClearGpx?.addEventListener('click', () => {
+            clearGpx();
+            showToast('Tracé GPX retiré.', 'info');
+        });
         els.btnPrint?.addEventListener('click', () => GraphicageFeatures.printRouteSheet());
         els.btnSetBaseline?.addEventListener('click', () => GraphicageFeatures.setBaselineFromCurrent());
         els.btnSolve.addEventListener('click', solveRoute);
@@ -1712,11 +2070,107 @@
         bindPanelEvents();
     }
 
+    const MAP_CLICK_TYPE_PLACEHOLDER = 'Sélectionner le type de point';
+
+    function activeMapClickType() {
+        if (mapClickType && TYPE_ICONS[mapClickType]) {
+            return mapClickType;
+        }
+        return null;
+    }
+
+    function nextClickLabel(type) {
+        const count = points.filter(p => p.type === type).length + 1;
+        const name = TYPE_LABELS[type] || 'Point';
+        return count === 1 ? name : `${name} ${count}`;
+    }
+
+    function setMapClickTypeOpen(open) {
+        if (!els.mapTypePicker || !els.mapClickType || !els.mapClickTypeToggle) return;
+        els.mapTypePicker.classList.toggle('is-open', open);
+        els.mapClickType.hidden = !open;
+        els.mapClickTypeToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function syncMapClickTypeUi() {
+        if (!els.mapClickType) return;
+        const current = activeMapClickType();
+        const label = current ? TYPE_LABELS[current] : MAP_CLICK_TYPE_PLACEHOLDER;
+        if (els.mapClickTypeLabel) {
+            els.mapClickTypeLabel.textContent = label;
+        }
+        if (els.mapClickTypeIcon) {
+            if (current) {
+                els.mapClickTypeIcon.hidden = false;
+                els.mapClickTypeIcon.className = `point-icon ${current}`;
+                els.mapClickTypeIcon.innerHTML = icon(TYPE_ICONS[current], 'icon icon-type');
+                refreshIcons(els.mapClickTypeIcon);
+            } else {
+                els.mapClickTypeIcon.hidden = true;
+                els.mapClickTypeIcon.innerHTML = '';
+            }
+        }
+        if (els.mapClickTypeToggle) {
+            els.mapClickTypeToggle.classList.toggle('is-placeholder', !current);
+            const open = els.mapClickTypeToggle.getAttribute('aria-expanded') === 'true';
+            els.mapClickTypeToggle.setAttribute(
+                'aria-label',
+                open
+                    ? `Masquer les types de points. ${label}`
+                    : `Afficher les types de points. ${label}`,
+            );
+        }
+        els.mapClickType.querySelectorAll('.map-type-option').forEach(btn => {
+            const selected = btn.dataset.type === current;
+            btn.classList.toggle('is-selected', selected);
+            btn.setAttribute('aria-pressed', selected ? 'true' : 'false');
+        });
+    }
+
+    function initMapClickType() {
+        if (!els.mapClickType || !els.mapClickTypeToggle) return;
+        els.mapClickType.innerHTML = Object.keys(TYPE_LABELS).map(type => `
+            <button type="button" class="map-type-option" data-type="${type}" aria-pressed="false">
+                <span class="point-icon ${type}">${icon(TYPE_ICONS[type], 'icon icon-type')}</span>
+                <span class="map-type-option-label">${TYPE_LABELS[type]}</span>
+            </button>
+        `).join('');
+        refreshIcons(els.mapClickType);
+        els.mapClickTypeToggle.addEventListener('click', () => {
+            const open = els.mapClickTypeToggle.getAttribute('aria-expanded') !== 'true';
+            setMapClickTypeOpen(open);
+            syncMapClickTypeUi();
+        });
+        els.mapClickType.querySelectorAll('.map-type-option').forEach(btn => {
+            btn.addEventListener('click', () => {
+                mapClickType = btn.dataset.type;
+                setMapClickTypeOpen(false);
+                syncMapClickTypeUi();
+            });
+        });
+        document.addEventListener('click', (event) => {
+            if (els.mapClickTypeToggle.getAttribute('aria-expanded') !== 'true') return;
+            if (!els.mapTypePicker?.contains(event.target)) {
+                setMapClickTypeOpen(false);
+                syncMapClickTypeUi();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            if (els.mapClickTypeToggle.getAttribute('aria-expanded') !== 'true') return;
+            setMapClickTypeOpen(false);
+            syncMapClickTypeUi();
+        });
+        syncMapClickTypeUi();
+    }
+
     initMap();
     initPointLegend();
+    initMapClickType();
     bindEvents();
     GraphicageFeatures.init({
         getPoints: () => points,
+        getGpxTracks: () => loadedGpxTracks,
         getConfig,
         applyState,
         applyPoints,
