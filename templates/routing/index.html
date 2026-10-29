@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin="">
-    <link rel="stylesheet" href="{% static 'routing/css/app.css' %}?v=30">
+    <link rel="stylesheet" href="{% static 'routing/css/app.css' %}?v=49">
 </head>
 <body>
     <div class="app-shell">
@@ -26,18 +26,6 @@
                     <i data-lucide="panel-left-close" aria-hidden="true"></i>
                 </button>
             </header>
-
-            <section class="panel panel-auth" id="auth-panel" aria-label="Compte utilisateur">
-                <h2>Mon compte</h2>
-                <div id="auth-user" class="auth-user">
-                    <p class="auth-welcome">Connecté en tant que <strong id="auth-username">{{ user.username }}</strong></p>
-                    <button type="button" id="btn-logout" class="btn btn-ghost">
-                        <i data-lucide="log-out" class="icon" aria-hidden="true"></i>
-                        Déconnexion
-                    </button>
-                    <a href="{% url 'landing' %}" class="btn-link auth-forgot">Retour à l'accueil</a>
-                </div>
-            </section>
 
             <section class="panel panel-guide" aria-label="Guide d'utilisation">
                 <h2>Comment ça marche</h2>
@@ -79,10 +67,20 @@
                         </div>
                     </li>
                 </ol>
+                <div class="guide-nav">
+                    <button type="button" id="guide-prev" class="btn btn-ghost" disabled>
+                        <i data-lucide="chevron-left" class="icon icon-sm" aria-hidden="true"></i>
+                        Précédente
+                    </button>
+                    <button type="button" id="guide-next" class="btn btn-ghost" disabled>
+                        Suivante
+                        <i data-lucide="chevron-right" class="icon icon-sm" aria-hidden="true"></i>
+                    </button>
+                </div>
                 <p class="workflow-status" id="workflow-status" role="status"></p>
             </section>
 
-            <section class="panel">
+            <section class="panel is-guide-off" data-guide-panel="config">
                 <h2>Configuration</h2>
                 <label class="field">
                     <span>Type de problème</span>
@@ -122,7 +120,7 @@
                 </label>
             </section>
 
-            <section class="panel panel-search">
+            <section class="panel panel-search" data-guide-panel="points">
                 <h2>Rechercher un lieu</h2>
                 <label class="field">
                     <span>Nom ou adresse</span>
@@ -144,8 +142,15 @@
                 <ul id="place-search-results" class="place-search-results" hidden></ul>
             </section>
 
-            <section class="panel">
-                <h2>Actions</h2>
+            <section class="panel" id="actions-panel">
+                <button type="button" class="panel-collapse" id="actions-toggle" aria-expanded="true" aria-controls="actions-body">
+                    <span>Actions</span>
+                    <span class="panel-collapse-icon" aria-hidden="true">
+                        <i data-lucide="chevron-down" class="icon icon-sm"></i>
+                    </span>
+                </button>
+                <div class="panel-collapse-body" id="actions-body">
+                <div class="panel-collapse-clip">
                 <div class="btn-group">
                     <button type="button" id="btn-load-sample" class="btn btn-secondary">
                         <i data-lucide="database" class="icon" aria-hidden="true"></i>
@@ -185,15 +190,36 @@
                     <i data-lucide="file-json" class="icon icon-inline" aria-hidden="true"></i>
                     Télécharger le modèle JSON
                 </button>
+                </div>
+                </div>
+            </section>
+
+            <section class="panel is-guide-off" data-guide-panel="solve">
+                <h2>Calcul</h2>
                 <button type="button" id="btn-solve" class="btn btn-primary">
                     <i data-lucide="route" class="icon" aria-hidden="true"></i>
                     Calculer l'itinéraire
                 </button>
-                <p class="hint">Besoin d'aide ? Consultez le guide ci-dessus ou l'onglet <strong>Guide</strong> sur la carte.</p>
+                <p class="hint">L'itinéraire optimisé s'affiche sur la carte et dans l'onglet Résultat.</p>
             </section>
         </aside>
 
         <main class="map-area">
+            <div class="account-menu" id="auth-panel">
+                <button type="button" class="account-avatar" id="account-toggle" aria-expanded="false" aria-controls="account-popover" aria-label="Mon compte, {{ user.username }}">
+                    <span id="account-initials">{{ user.username|slice:":2"|upper }}</span>
+                </button>
+                <div class="account-popover panel-auth" id="account-popover" hidden>
+                    <p class="auth-welcome">Connecté en tant que <strong id="auth-username">{{ user.username }}</strong></p>
+                    <div id="auth-user" class="auth-user">
+                        <button type="button" id="btn-logout" class="btn btn-ghost">
+                            <i data-lucide="log-out" class="icon" aria-hidden="true"></i>
+                            Déconnexion
+                        </button>
+                        <a href="{% url 'landing' %}" class="btn-link auth-forgot">Retour à l'accueil</a>
+                    </div>
+                </div>
+            </div>
             <button type="button" id="sidebar-toggle" class="sidebar-toggle" hidden aria-label="Ouvrir le panneau">
                 <i data-lucide="panel-left-open" aria-hidden="true"></i>
             </button>
@@ -414,7 +440,7 @@
             crossorigin=""></script>
     <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js" crossorigin=""></script>
     <script src="{% static 'routing/js/features.js' %}?v=5"></script>
-    <script src="{% static 'routing/js/auth.js' %}?v=1"></script>
-    <script src="{% static 'routing/js/app.js' %}?v=24"></script>
+    <script src="{% static 'routing/js/auth.js' %}?v=2"></script>
+    <script src="{% static 'routing/js/app.js' %}?v=43"></script>
 </body>
 </html>

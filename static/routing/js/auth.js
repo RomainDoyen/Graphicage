@@ -34,6 +34,14 @@
         if (currentUser && usernameEl) {
             usernameEl.textContent = currentUser.username;
         }
+        const initials = document.getElementById('account-initials');
+        const toggle = document.getElementById('account-toggle');
+        if (currentUser && initials) {
+            initials.textContent = currentUser.username.slice(0, 2).toUpperCase();
+        }
+        if (currentUser && toggle) {
+            toggle.setAttribute('aria-label', `Mon compte, ${currentUser.username}`);
+        }
         global.dispatchEvent(new CustomEvent('graphicage:auth-changed', { detail: { user: currentUser } }));
     }
 
@@ -186,9 +194,39 @@
         return div.innerHTML;
     }
 
+    function bindAccountMenu() {
+        const toggle = document.getElementById('account-toggle');
+        const popover = document.getElementById('account-popover');
+        if (!toggle || !popover) return;
+
+        function closeMenu() {
+            popover.hidden = true;
+            toggle.setAttribute('aria-expanded', 'false');
+        }
+
+        toggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const willOpen = popover.hidden;
+            popover.hidden = !willOpen;
+            toggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', (event) => {
+            if (popover.hidden || event.target.closest('.account-menu')) return;
+            closeMenu();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape' || popover.hidden) return;
+            closeMenu();
+            toggle.focus();
+        });
+    }
+
     function bindAuthEvents() {
         document.getElementById('btn-logout')?.addEventListener('click', logout);
         document.getElementById('tab-btn-history')?.addEventListener('click', loadHistory);
+        bindAccountMenu();
     }
 
     global.GraphicageAuth = {

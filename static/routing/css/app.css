@@ -19,6 +19,10 @@
     --sidebar-width: 320px;
     --panel-width: 560px;
     --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur-fast: 140ms;
+    --dur: 220ms;
+    --dur-panel: 320ms;
 }
 
 *, *::before, *::after {
@@ -87,6 +91,234 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 
+.leaflet-container .leaflet-marker-icon.route-bus-marker {
+    background: transparent;
+    border: none;
+}
+
+.route-bus {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid currentColor;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.route-bus .icon,
+.route-bus .icon svg {
+    width: 1rem;
+    height: 1rem;
+    color: currentColor;
+}
+
+.leaflet-tooltip.route-bus-tip,
+.leaflet-tooltip.map-place-tip {
+    padding: 0.15rem 0.45rem;
+    border: none;
+    border-radius: 6px;
+    background: rgba(18, 24, 32, 0.94);
+    color: var(--text);
+    font-size: 0.72rem;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.leaflet-tooltip-top.route-bus-tip::before,
+.leaflet-tooltip-top.map-place-tip::before {
+    border-top-color: rgba(18, 24, 32, 0.94);
+}
+
+.leaflet-control-zoom.leaflet-bar {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    overflow: visible;
+}
+
+.leaflet-control-zoom.leaflet-bar a,
+.leaflet-touch .leaflet-control-zoom.leaflet-bar a {
+    width: 2.35rem;
+    height: 2.25rem;
+    line-height: 2.15rem;
+    background-color: var(--surface);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    font: 600 1.2rem/2.15rem var(--font);
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.leaflet-control-zoom.leaflet-bar a:hover,
+.leaflet-control-zoom.leaflet-bar a:focus {
+    background-color: var(--surface-2);
+    color: var(--text);
+}
+
+.leaflet-control-zoom.leaflet-bar a:first-child {
+    border-top-left-radius: 13px;
+    border-top-right-radius: 13px;
+}
+
+.leaflet-control-zoom.leaflet-bar a:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 13px;
+    border-bottom-right-radius: 13px;
+}
+
+.leaflet-control-zoom.leaflet-bar a.leaflet-disabled {
+    background-color: var(--surface);
+    color: var(--text-muted);
+    opacity: 0.4;
+    cursor: default;
+}
+
+.leaflet-control-zoom.is-off {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.leaflet-control-locate.leaflet-bar,
+.leaflet-control-zoom-toggle.leaflet-bar {
+    margin-top: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    overflow: visible;
+}
+
+.leaflet-control-locate-btn,
+.leaflet-control-zoom-toggle-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.35rem;
+    height: 2.35rem;
+    padding: 0;
+    border: none;
+    border-radius: 14px;
+    appearance: none;
+    background: var(--surface);
+    background-image: none;
+    color: var(--text);
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.leaflet-control-locate-btn[aria-pressed="false"]::after,
+.leaflet-control-zoom-toggle-btn[aria-pressed="false"]::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 1.45rem;
+    height: 2px;
+    border-radius: 1px;
+    background: currentColor;
+    box-shadow: 0 0 0 1.5px var(--surface);
+    transform: translate(-50%, -50%) rotate(-45deg);
+    pointer-events: none;
+}
+
+.leaflet-control-locate-btn[aria-pressed="false"]:hover::after,
+.leaflet-control-zoom-toggle-btn[aria-pressed="false"]:hover::after {
+    box-shadow: 0 0 0 1.5px var(--surface-2);
+}
+
+.leaflet-control-locate-btn:hover,
+.leaflet-control-zoom-toggle-btn:hover,
+.leaflet-control-locate-btn[aria-pressed="true"],
+.leaflet-control-zoom-toggle-btn[aria-pressed="true"] {
+    background: var(--surface-2);
+    color: var(--primary);
+}
+
+.leaflet-control-zoom.leaflet-bar a {
+    position: relative;
+}
+
+.leaflet-control-zoom.leaflet-bar a::before {
+    content: attr(aria-label);
+    position: absolute;
+    left: calc(100% + 0.55rem);
+    top: 50%;
+    z-index: 5;
+    padding: 0.28rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(18, 24, 32, 0.94);
+    color: var(--text);
+    font: 600 0.72rem/1.3 var(--font);
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: opacity var(--dur-fast) ease;
+}
+
+.leaflet-control-zoom.leaflet-bar a:hover::before,
+.leaflet-control-zoom.leaflet-bar a:focus-visible::before {
+    opacity: 1;
+}
+
+.map-tool-tip {
+    position: absolute;
+    left: calc(100% + 0.55rem);
+    top: 50%;
+    z-index: 5;
+    padding: 0.28rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(18, 24, 32, 0.94);
+    color: var(--text);
+    font: 600 0.72rem/1.3 var(--font);
+    white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
+    transition: opacity var(--dur-fast) ease;
+}
+
+.leaflet-control-locate-btn:hover .map-tool-tip,
+.leaflet-control-locate-btn:focus-visible .map-tool-tip,
+.leaflet-control-zoom-toggle-btn:hover .map-tool-tip,
+.leaflet-control-zoom-toggle-btn:focus-visible .map-tool-tip {
+    opacity: 1;
+}
+
+.leaflet-control-locate-btn .icon,
+.leaflet-control-zoom-toggle-btn .icon,
+.leaflet-control-locate-btn svg,
+.leaflet-control-zoom-toggle-btn svg {
+    display: block;
+    width: 1.15rem;
+    height: 1.15rem;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.leaflet-container .leaflet-marker-icon.map-person-marker {
+    background: transparent;
+    border: none;
+}
+
+.map-person-marker .point-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.point-icon.person .icon {
+    color: var(--primary);
+}
+
 html, body {
     margin: 0;
     height: 100%;
@@ -126,6 +358,10 @@ body.is-loading .app-shell {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(143, 163, 188, 0.4) transparent;
+    transition:
+        transform var(--dur-panel) var(--ease-out),
+        opacity var(--dur) ease,
+        visibility 0s;
 }
 
 .sidebar:hover {
@@ -153,7 +389,14 @@ body.is-loading .app-shell {
 }
 
 .sidebar.is-collapsed {
-    display: none;
+    transform: translateX(calc(-100% - 1.25rem));
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        transform 260ms var(--ease-out),
+        opacity 180ms ease,
+        visibility 0s linear 260ms;
 }
 
 .sidebar-header {
@@ -174,6 +417,13 @@ body.is-loading .app-shell {
     background: var(--surface-2);
     color: var(--text);
     cursor: pointer;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out), opacity var(--dur) var(--ease-out), display var(--dur) allow-discrete;
+}
+
+.sidebar-collapse:active,
+.sidebar-toggle:active,
+.panel-minimize:active {
+    transform: scale(0.94);
 }
 
 .sidebar-collapse {
@@ -210,6 +460,88 @@ body.is-loading .app-shell {
 
 .sidebar-toggle[hidden] {
     display: none;
+    opacity: 0;
+    transform: translateX(-8px);
+}
+
+@starting-style {
+    .sidebar-toggle {
+        opacity: 0;
+        transform: translateX(-8px);
+    }
+}
+
+.account-menu {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 960;
+}
+
+.account-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid var(--primary);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    transition: background var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) ease;
+}
+
+.account-avatar:hover,
+.account-avatar[aria-expanded="true"] {
+    background: var(--surface-2);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+}
+
+.account-avatar:active {
+    transform: scale(0.96);
+}
+
+.account-popover {
+    position: absolute;
+    top: calc(100% + 0.45rem);
+    right: 0;
+    width: 15.5rem;
+    padding: 0.9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+    display: block;
+    transform-origin: top right;
+    transition:
+        opacity var(--dur) var(--ease-out),
+        transform var(--dur) var(--ease-out),
+        display var(--dur) allow-discrete;
+}
+
+.account-popover[hidden] {
+    display: none;
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
+@starting-style {
+    .account-popover {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+}
+
+.leaflet-top.leaflet-left,
+.map-stack {
+    transition: left var(--dur-panel) var(--ease-out);
 }
 
 .app-shell:not(.sidebar-collapsed) .leaflet-top.leaflet-left {
@@ -267,6 +599,58 @@ body.is-loading .app-shell {
     font-weight: 600;
 }
 
+.panel-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+
+.panel-collapse:hover {
+    color: var(--text);
+}
+
+.panel-collapse-icon {
+    display: inline-flex;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.panel:not(.is-collapsed) .panel-collapse-icon {
+    transform: rotate(180deg);
+}
+
+.panel.is-collapsed .panel-collapse {
+    margin-bottom: 0;
+}
+
+.panel-collapse-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--dur-panel) var(--ease-out), opacity var(--dur) ease;
+}
+
+.panel-collapse-clip {
+    overflow: hidden;
+    min-height: 0;
+}
+
+.panel.is-collapsed .panel-collapse-body {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* ——— Guide utilisateur (sidebar) ——— */
 
 .panel-guide {
@@ -290,6 +674,93 @@ body.is-loading .app-shell {
     border-radius: 8px;
     border: 1px solid transparent;
     transition: background 0.15s, border-color 0.15s;
+    cursor: pointer;
+}
+
+.guide-step.is-locked {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.guide-step:not(.is-current) .guide-step-body span {
+    display: none;
+}
+
+.guide-nav {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.65rem;
+}
+
+.guide-nav .btn {
+    flex: 1;
+    padding: 0.4rem 0.45rem;
+    font-size: 0.75rem;
+}
+
+.guide-nav .btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.panel.is-guide-off {
+    display: none;
+}
+
+.is-guide-focus {
+    position: relative;
+}
+
+.guide-focus-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 3;
+    pointer-events: none;
+    overflow: visible;
+}
+
+.guide-focus-ring rect {
+    fill: none;
+    stroke: var(--primary);
+    animation: guide-march 1.8s linear infinite;
+}
+
+@keyframes guide-march {
+    to {
+        stroke-dashoffset: -16;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .guide-focus-ring rect {
+        animation: none;
+    }
+
+    .sidebar,
+    .floating-panel,
+    .panel-collapse-body,
+    .account-popover,
+    .app-select-menu,
+    .map-type-options,
+    .floating-tab-panel.active,
+    .leaflet-top.leaflet-left,
+    .map-stack,
+    .btn,
+    .account-avatar,
+    .field-checkbox,
+    .field-checkbox input,
+    .field-checkbox input::after,
+    .sidebar-collapse,
+    .sidebar-toggle,
+    .panel-minimize,
+    .floating-tab,
+    .panel-collapse-icon,
+    .app-select-chevron,
+    .map-type-chevron {
+        animation: none;
+        transition: none;
+    }
 }
 
 .guide-step.is-current {
@@ -543,23 +1014,214 @@ body.is-loading .app-shell {
     color-scheme: dark;
 }
 
-.field select option,
-.point-item select option,
-.floating-panel select option {
+.app-select {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.app-select-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.app-select-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.5rem 0.65rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
     background: var(--surface-2);
     color: var(--text);
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+}
+
+.app-select-toggle:hover,
+.app-select.is-open .app-select-toggle {
+    border-color: var(--text-muted);
+}
+
+.app-select-toggle:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.app-select-value {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-select-chevron {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.app-select.is-open .app-select-chevron {
+    transform: rotate(180deg);
+}
+
+.app-select-menu {
+    position: fixed;
+    z-index: 1100;
+    margin: 0;
+    padding: 0.3rem;
+    list-style: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+    max-height: 240px;
+    overflow: auto;
+    display: block;
+    transform-origin: top center;
+    transition:
+        opacity var(--dur) var(--ease-out),
+        transform var(--dur) var(--ease-out),
+        display var(--dur) allow-discrete;
+}
+
+.app-select-menu[hidden] {
+    display: none;
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+@starting-style {
+    .app-select-menu {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+}
+
+.app-select-option {
+    padding: 0.45rem 0.65rem;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.85rem;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+.app-select-option:hover,
+.app-select-option:focus {
+    background: var(--surface-2);
+    outline: none;
+}
+
+.app-select-option.is-selected {
+    background: rgba(59, 130, 246, 0.18);
+    color: var(--text);
+}
+
+.point-item-actions .app-select,
+.point-pair-dest .app-select,
+.point-extra .app-select {
+    flex: 1 1 auto;
+    width: auto;
+}
+
+.point-item-actions .app-select-toggle,
+.point-pair-dest .app-select-toggle,
+.point-extra .app-select-toggle {
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.78rem;
+}
+
+.app-select:has(.point-school-select) .app-select-toggle {
+    border-color: rgba(168, 85, 247, 0.5);
+}
+
+.app-select:has(.point-school-select) .app-select-toggle:focus-visible,
+.app-select.is-open:has(.point-school-select) .app-select-toggle {
+    border-color: var(--school);
+    box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.25);
 }
 
 .field-checkbox {
     flex-direction: row;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.65rem;
+    margin-bottom: 0.55rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-2);
     cursor: pointer;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease;
+}
+
+.field-checkbox:hover {
+    border-color: var(--text-muted);
+}
+
+.field-checkbox:has(input:checked) {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.field-checkbox:has(input:focus-visible) {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.field-checkbox span {
+    color: var(--text);
+    line-height: 1.35;
 }
 
 .field-checkbox input {
-    width: auto;
-    accent-color: var(--primary);
+    appearance: none;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin: 0;
+    flex-shrink: 0;
+    display: grid;
+    place-content: center;
+    border: 1.5px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    cursor: pointer;
+    transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+
+.field-checkbox input:active {
+    transform: scale(0.9);
+}
+
+.field-checkbox input::after {
+    content: "";
+    width: 0.28rem;
+    height: 0.5rem;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) scale(0);
+    margin-top: -2px;
+    transition: transform var(--dur) var(--ease-out);
+}
+
+.field-checkbox input:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.field-checkbox input:checked::after {
+    transform: rotate(45deg) scale(1);
 }
 
 .btn-group {
@@ -579,7 +1241,7 @@ body.is-loading .app-shell {
     font: inherit;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out), box-shadow var(--dur) ease;
 }
 
 .btn:active {
@@ -1139,10 +1801,22 @@ body.is-loading .app-shell {
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
     z-index: 900;
     overflow: hidden;
+    transform-origin: bottom right;
+    transition:
+        transform var(--dur-panel) var(--ease-out),
+        opacity var(--dur) ease,
+        visibility 0s;
 }
 
 .floating-panel.is-minimized {
-    display: none;
+    transform: translateY(16px) scale(0.98);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        transform 240ms var(--ease-out),
+        opacity 160ms ease,
+        visibility 0s linear 240ms;
 }
 
 .floating-panel-header {
@@ -1177,7 +1851,11 @@ body.is-loading .app-shell {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: background 0.15s, color 0.15s;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+
+.floating-tab:active {
+    transform: scale(0.98);
 }
 
 .floating-tab:hover {
@@ -1208,6 +1886,7 @@ body.is-loading .app-shell {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: background var(--dur-fast) ease, color var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
 }
 
 .panel-minimize svg {
@@ -1229,6 +1908,17 @@ body.is-loading .app-shell {
 
 .floating-tab-panel {
     min-height: 100%;
+}
+
+.floating-tab-panel.active {
+    animation: surface-in var(--dur) var(--ease-out);
+}
+
+@keyframes surface-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
 }
 
 .floating-tab-panel[hidden] {
@@ -1341,7 +2031,11 @@ body.is-loading .app-shell {
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    transition: transform 0.15s, background 0.15s;
+    transition:
+        transform var(--dur) var(--ease-out),
+        background var(--dur-fast) ease,
+        opacity var(--dur) var(--ease-out),
+        display var(--dur) allow-discrete;
 }
 
 .panel-toggle:hover {
@@ -1350,7 +2044,16 @@ body.is-loading .app-shell {
 }
 
 .panel-toggle[hidden] {
-    display: none !important;
+    display: none;
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+@starting-style {
+    .panel-toggle {
+        opacity: 0;
+        transform: translateY(8px);
+    }
 }
 
 .panel-toggle-icon {
@@ -1658,10 +2361,24 @@ body.is-loading .app-shell {
     border: 1px solid var(--border);
     border-radius: 12px;
     box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    transform-origin: bottom center;
+    transition:
+        opacity var(--dur) var(--ease-out),
+        transform var(--dur) var(--ease-out),
+        display var(--dur) allow-discrete;
 }
 
 .map-type-options[hidden] {
     display: none;
+    opacity: 0;
+    transform: translateY(6px);
+}
+
+@starting-style {
+    .map-type-options {
+        opacity: 0;
+        transform: translateY(6px);
+    }
 }
 
 .map-type-option {
@@ -2672,6 +3389,10 @@ body.auth-page {
         bottom: auto;
         width: auto;
         max-height: 46vh;
+    }
+
+    .sidebar-header {
+        padding-right: 4.25rem;
     }
 
     .app-shell:not(.sidebar-collapsed) .leaflet-top.leaflet-left,

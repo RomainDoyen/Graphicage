@@ -267,6 +267,15 @@ class SolveRouteView(APIView):
 
         points = data['points']
         summary = build_route_summary(result.routes)
+        index_map = result.index_map
+
+        def original_node(node_index: int) -> int | None:
+            if index_map and 0 <= node_index < len(index_map):
+                node_index = index_map[node_index]
+            if 0 <= node_index < len(points):
+                return node_index
+            return None
+
         response_payload = {
             'problem_type': result.problem_type,
             'routing_engine': result.routing_engine,
@@ -279,16 +288,20 @@ class SolveRouteView(APIView):
                     'duration_minutes': route.duration_minutes,
                     'duration_label': format_duration_minutes(route.duration_minutes),
                     'load': route.load,
-                    'node_indices': route.node_indices,
+                    'node_indices': [
+                        resolved
+                        for node_index in route.node_indices
+                        if (resolved := original_node(node_index)) is not None
+                    ],
                     'geometry': route.geometry,
                     'points': [
                         {
-                            'index': node_index,
-                            'id': points[node_index]['id'],
-                            'lat': points[node_index]['lat'],
-                            'lng': points[node_index]['lng'],
-                            'label': points[node_index].get('label', ''),
-                            'type': points[node_index].get('type', 'stop'),
+                            'index': resolved,
+                            'id': points[resolved]['id'],
+                            'lat': points[resolved]['lat'],
+                            'lng': points[resolved]['lng'],
+                            'label': points[resolved].get('label', ''),
+                            'type': points[resolved].get('type', 'stop'),
                             'arrival_min': (
                                 route.arrival_times[idx][0]
                                 if idx < len(route.arrival_times)
@@ -306,6 +319,7 @@ class SolveRouteView(APIView):
                             ),
                         }
                         for idx, node_index in enumerate(route.node_indices)
+                        if (resolved := original_node(node_index)) is not None
                     ],
                 }
                 for route in result.routes

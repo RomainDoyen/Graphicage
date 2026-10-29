@@ -63,6 +63,34 @@ class SolverTests(SimpleTestCase):
                 vehicle_capacities=[4],
             )
 
+    def test_two_buses_can_share_one_school(self):
+        points = [
+            {'id': 0, 'lat': -20.8789, 'lng': 55.4481, 'type': 'depot'},
+            {'id': 1, 'lat': -20.8900, 'lng': 55.4600, 'type': 'pickup', 'demand': 30},
+            {'id': 2, 'lat': -20.9000, 'lng': 55.4700, 'type': 'pickup', 'demand': 30},
+            {'id': 3, 'lat': -20.8800, 'lng': 55.4475, 'type': 'school'},
+        ]
+        result = solve_routing(
+            points,
+            problem_type='pdp',
+            pickups_deliveries=[[1, 3], [2, 3]],
+            num_vehicles=2,
+            vehicle_capacities=[50, 50],
+        )
+        self.assertGreaterEqual(len(result.routes), 2)
+        served = set()
+        for route in result.routes:
+            self.assertIn(3, route.node_indices)
+            self.assertEqual(route.node_indices.count(3), 1)
+            for node in (1, 2):
+                if node in route.node_indices:
+                    served.add(node)
+                    self.assertLess(
+                        route.node_indices.index(node),
+                        route.node_indices.index(3),
+                    )
+        self.assertEqual(served, {1, 2})
+
     def test_capacity_accepts_within_limit(self):
         points = [
             {'id': 0, 'lat': -20.8789, 'lng': 55.4481, 'type': 'depot'},

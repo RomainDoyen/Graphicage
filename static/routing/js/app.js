@@ -48,16 +48,22 @@
     let points = [];
     let markers = new Map();
     let routeLayers = [];
+    let routeAnimToken = 0;
     let gpxLayers = [];
     let loadedGpxTracks = [];
     let activeRoutesMeta = [];
 
+    const GUIDE_ORDER = ['points', 'types', 'config', 'solve'];
     const GUIDE_STEP_ICONS = {
         points: 'map-pin-plus',
         types: 'tags',
         config: 'settings-2',
         solve: 'route',
     };
+    let guideView = 0;
+    let guideFollow = true;
+    let guideMarked = false;
+    let guideScroll = false;
 
     const PROBLEM_TYPE_HINTS = {
         tsp: 'Visite tous les points dans l’ordre optimal. Idéal sans ramassage→école.',
@@ -131,6 +137,8 @@
         mapClickType: document.getElementById('map-click-type'),
         mapClickTypeLabel: document.getElementById('map-click-type-label'),
         guideSteps: document.querySelectorAll('.guide-step'),
+        guidePrev: document.getElementById('guide-prev'),
+        guideNext: document.getElementById('guide-next'),
         workflowStatus: document.getElementById('workflow-status'),
         toastMessage: document.querySelector('#toast .toast-message'),
         toastIcon: document.querySelector('#toast .toast-icon [data-lucide]'),
@@ -333,30 +341,141 @@
         };
     }
 
+    function setGuideView(index, highlight) {
+        const unlocked = GUIDE_ORDER.indexOf(analyzeWorkflow().currentStep);
+        guideView = Math.max(0, Math.min(index, unlocked));
+        guideFollow = guideView === unlocked;
+        if (highlight) {
+            guideMarked = true;
+            guideScroll = true;
+        }
+        updateWorkflowGuide();
+    }
+
+    const GUIDE_RING_NS = 'http://www.w3.org/2000/svg';
+    const guideRingObserver = new ResizeObserver((entries) => {
+        entries.forEach((entry) => mountGuideRing(entry.target));
+    });
+
+    function clearGuideRing(el) {
+        el.classList.remove('is-guide-focus');
+        guideRingObserver.unobserve(el);
+        el.querySelector(':scope > .guide-focus-ring')?.remove();
+    }
+
+    function mountGuideRing(target) {
+        if (!target.classList.contains('is-guide-focus')) return;
+        const w = target.clientWidth;
+        const h = target.clientHeight;
+        if (w < 16 || h < 16) return;
+        let svg = target.querySelector(':scope > .guide-focus-ring');
+        let rect = svg ? svg.querySelector('rect') : null;
+        if (!svg) {
+            svg = document.createElementNS(GUIDE_RING_NS, 'svg');
+            svg.setAttribute('class', 'guide-focus-ring');
+            svg.setAttribute('aria-hidden', 'true');
+            rect = document.createElementNS(GUIDE_RING_NS, 'rect');
+            svg.appendChild(rect);
+            target.appendChild(svg);
+        }
+        const outside = target.id === 'points-list';
+        const tight = target.id === 'map-type-picker';
+        const stroke = 3;
+        const gap = outside ? 6 : tight ? 3 : 8;
+        const bleed = outside ? gap + stroke : 0;
+        const svgW = w + bleed * 2;
+        const svgH = h + bleed * 2;
+        const x = outside ? bleed - gap + stroke / 2 : gap + stroke / 2;
+        const y = x;
+        const rw = Math.max(stroke, svgW - x * 2);
+        const rh = Math.max(stroke, svgH - y * 2);
+        const radius = tight
+            ? Math.max(4, 12 - gap - stroke / 2)
+            : Math.min(12, rw / 2, rh / 2);
+        svg.style.left = `${-bleed}px`;
+        svg.style.top = `${-bleed}px`;
+        svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+        svg.setAttribute('width', String(svgW));
+        svg.setAttribute('height', String(svgH));
+        rect.setAttribute('x', String(x));
+        rect.setAttribute('y', String(y));
+        rect.setAttribute('width', String(rw));
+        rect.setAttribute('height', String(rh));
+        rect.setAttribute('rx', String(radius));
+        rect.setAttribute('ry', String(radius));
+        rect.setAttribute('stroke-width', String(stroke));
+        rect.setAttribute('stroke-linecap', 'round');
+        rect.setAttribute('stroke-linejoin', 'round');
+        rect.setAttribute('stroke-dasharray', '6 10');
+        rect.setAttribute('fill', 'none');
+    }
+
+    function focusGuideTarget(step, scroll) {
+        if (step === 'types' && scroll) expandPanel('points');
+        const selectors = {
+            points: ['[data-guide-panel="points"]', '#map-type-picker'],
+            types: ['#points-list'],
+            config: ['[data-guide-panel="config"]'],
+            solve: ['[data-guide-panel="solve"]'],
+        }[step] || [];
+        const targets = selectors.map(sel => document.querySelector(sel)).filter(Boolean);
+        document.querySelectorAll('.is-guide-focus').forEach(el => {
+            if (!targets.includes(el)) clearGuideRing(el);
+        });
+        targets.forEach((target, index) => {
+            target.classList.add('is-guide-focus');
+            guideRingObserver.observe(target);
+            mountGuideRing(target);
+            if (scroll && index === 0) target.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+    }
+
     function updateWorkflowGuide() {
         const { currentStep, issues, blocking, ready } = analyzeWorkflow();
+        const unlocked = GUIDE_ORDER.indexOf(currentStep);
+        if (guideFollow) guideView = unlocked;
+        if (guideView > unlocked) {
+            guideView = unlocked;
+            guideFollow = true;
+        }
 
         els.guideSteps.forEach((stepEl) => {
             const step = stepEl.dataset.step;
-            stepEl.classList.remove('is-current', 'is-done', 'is-warning');
-            const order = ['points', 'types', 'config', 'solve'];
-            const stepIndex = order.indexOf(step);
-            const currentIndex = order.indexOf(currentStep);
-            const isDone = stepIndex < currentIndex || (ready && step !== 'solve');
-            if (isDone) {
-                stepEl.classList.add('is-done');
-            } else if (step === currentStep) {
+            const stepIndex = GUIDE_ORDER.indexOf(step);
+            const isLocked = stepIndex > unlocked;
+            const isViewed = stepIndex === guideView;
+            const isDone = stepIndex < unlocked && !isViewed;
+            stepEl.classList.remove('is-current', 'is-done', 'is-warning', 'is-locked');
+            stepEl.classList.toggle('is-locked', isLocked);
+            stepEl.classList.toggle('is-done', isDone);
+            if (isViewed) {
                 stepEl.classList.add('is-current');
-                if (issues.length && !ready) {
+                if (stepIndex === unlocked && issues.length && !ready) {
                     stepEl.classList.add('is-warning');
                 }
             }
+            stepEl.setAttribute('aria-current', isViewed ? 'step' : 'false');
+            stepEl.tabIndex = isLocked ? -1 : 0;
 
             const iconEl = stepEl.querySelector('.guide-step-num [data-lucide]');
             if (iconEl) {
-                iconEl.setAttribute('data-lucide', isDone ? 'check' : GUIDE_STEP_ICONS[step]);
+                const iconName = isLocked ? 'lock' : (isDone ? 'check' : GUIDE_STEP_ICONS[step]);
+                iconEl.setAttribute('data-lucide', iconName);
             }
         });
+
+        if (els.guidePrev) els.guidePrev.disabled = guideView <= 0;
+        if (els.guideNext) els.guideNext.disabled = guideView >= unlocked;
+
+        const viewedStep = GUIDE_ORDER[guideView];
+        document.querySelectorAll('[data-guide-panel]').forEach((panel) => {
+            const steps = panel.dataset.guidePanel.split(/\s+/);
+            panel.classList.toggle('is-guide-off', !steps.includes(viewedStep));
+        });
+        if (guideMarked) {
+            focusGuideTarget(viewedStep, guideScroll);
+            guideScroll = false;
+        }
 
         refreshIcons(document.getElementById('guide-steps'));
 
@@ -425,7 +544,9 @@
             hints.push('Vérifiez que l’école accepte les élèves après le ramassage.');
         }
         if (msg.includes('ramassage') || msg.includes('pickup') || msg.includes('pdp')) {
-            hints.push('Passez en mode « Pickup & Delivery ».');
+            if (els.problemType.value !== 'pdp') {
+                hints.push('Passez en mode « Pickup & Delivery ».');
+            }
             hints.push('Associez chaque ramassage à une école dans la liste des points.');
         }
         if (els.problemType.value === 'tsp') {
@@ -741,6 +862,7 @@
 
         els.pointsListEmpty.hidden = points.length > 0 && visibleCount > 0;
 
+        enhanceSelects(els.pointsList);
         bindPointListEvents();
         GraphicageFeatures.setupDragDrop(els.pointsList, reorderPoints);
         refreshIcons(els.pointsList);
@@ -848,6 +970,7 @@
         marker.options.title = point.label;
         const el = marker.getElement();
         if (el) el.title = point.label;
+        bindPointTooltip(marker, point);
         if (!marker.isPopupOpen()) return;
         const popupEl = marker.getPopup().getElement();
         const titleEl = popupEl?.querySelector('.map-popup-title');
@@ -970,8 +1093,23 @@
         }).addTo(map);
         marker._pointIndex = index;
         attachMarkerPopup(marker);
+        bindPointTooltip(marker, point);
         paintMarkerIcon(marker);
         return marker;
+    }
+
+    function bindPointTooltip(marker, point) {
+        const text = escapeHtml(point.label || TYPE_LABELS[point.type] || 'Point');
+        if (marker.getTooltip()) {
+            marker.setTooltipContent(text);
+            return;
+        }
+        marker.bindTooltip(text, {
+            permanent: true,
+            direction: 'top',
+            className: 'map-place-tip',
+            offset: [0, -14],
+        });
     }
 
     function initPointLegend() {
@@ -1133,6 +1271,7 @@
     }
 
     function clearRoutes() {
+        routeAnimToken += 1;
         routeLayers.forEach(layer => map.removeLayer(layer));
         routeLayers = [];
         updateRouteLegend([]);
@@ -1537,26 +1676,205 @@
         return `${mins} min`;
     }
 
+    function flattenLatLngs(latlngs) {
+        if (!latlngs.length) return [];
+        if (typeof latlngs[0].lat !== 'number') return latlngs.flat();
+        return latlngs;
+    }
+
+    function bearingDegrees(a, b) {
+        const toRad = Math.PI / 180;
+        const y = Math.sin((b.lng - a.lng) * toRad) * Math.cos(b.lat * toRad);
+        const x = Math.cos(a.lat * toRad) * Math.sin(b.lat * toRad)
+            - Math.sin(a.lat * toRad) * Math.cos(b.lat * toRad) * Math.cos((b.lng - a.lng) * toRad);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function pointAlong(latlngs, progress) {
+        const line = flattenLatLngs(latlngs);
+        if (!line.length) return null;
+        if (line.length === 1 || progress <= 0) {
+            const next = line[Math.min(1, line.length - 1)];
+            return { at: line[0], bearing: bearingDegrees(line[0], next) };
+        }
+        const steps = [];
+        let total = 0;
+        for (let i = 1; i < line.length; i += 1) {
+            const dist = haversineMeters([line[i - 1].lat, line[i - 1].lng], [line[i].lat, line[i].lng]);
+            steps.push(dist);
+            total += dist;
+        }
+        let remain = total * Math.min(1, progress);
+        for (let i = 0; i < steps.length; i += 1) {
+            if (remain <= steps[i] || i === steps.length - 1) {
+                const ratio = steps[i] ? Math.min(1, remain / steps[i]) : 0;
+                const a = line[i];
+                const b = line[i + 1];
+                return {
+                    at: L.latLng(a.lat + (b.lat - a.lat) * ratio, a.lng + (b.lng - a.lng) * ratio),
+                    bearing: bearingDegrees(a, b),
+                };
+            }
+            remain -= steps[i];
+        }
+        return { at: line[line.length - 1], bearing: 0 };
+    }
+
+    function busMarker(latlng, color) {
+        return L.marker(latlng, {
+            interactive: false,
+            keyboard: false,
+            zIndexOffset: 900,
+            icon: L.divIcon({
+                className: 'route-bus-marker',
+                html: `<span class="route-bus" style="color:${color}">${icon('bus-front', 'icon icon-type')}</span>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+            }),
+        });
+    }
+
+    function busPlaceLabel(end) {
+        if (!end) return 'Arrivée';
+        return end.label || TYPE_LABELS[end.type] || 'Arrivée';
+    }
+
+    function showBusStop(bus, end) {
+        if (end && Number.isFinite(Number(end.lat)) && Number.isFinite(Number(end.lng))) {
+            bus.setLatLng([Number(end.lat), Number(end.lng)]);
+        }
+        bus.unbindTooltip();
+        bus.bindTooltip(escapeHtml(busPlaceLabel(end)), {
+            permanent: true,
+            direction: 'top',
+            className: 'route-bus-tip',
+            offset: [0, -12],
+        });
+    }
+
+    function parkBus(item) {
+        const end = item.end;
+        const at = end
+            ? L.latLng(Number(end.lat), Number(end.lng))
+            : pointAlong(item.polyline.getLatLngs(), 1).at;
+        const bus = busMarker(at, item.color).addTo(map);
+        routeLayers.push(bus);
+        refreshIcons(bus.getElement());
+        showBusStop(bus, end);
+        return bus;
+    }
+
+    function animateRoutes(items, token) {
+        const runs = [];
+        items.forEach(item => {
+            item.polyline.setStyle({ opacity: 0.88, dashArray: null });
+            const path = item.polyline.getElement();
+            if (!path || path.getTotalLength() < 1) {
+                parkBus(item);
+                return;
+            }
+            const length = path.getTotalLength();
+            path.style.strokeDasharray = `${length} ${length}`;
+            path.style.strokeDashoffset = String(length);
+            const spot = pointAlong(item.polyline.getLatLngs(), 0);
+            const bus = busMarker(spot.at, item.color).addTo(map);
+            routeLayers.push(bus);
+            refreshIcons(bus.getElement());
+            runs.push({
+                path,
+                length,
+                bus,
+                end: item.end,
+                glyph: bus.getElement() && bus.getElement().querySelector('.route-bus'),
+                dashed: item.dashed,
+                polyline: item.polyline,
+            });
+        });
+        if (!runs.length) return;
+
+        const started = performance.now();
+        const longest = Math.max(...runs.map(run => run.length));
+        const duration = Math.min(28000, Math.max(12000, (longest / 90) * 1000));
+
+        function frame(now) {
+            if (token !== routeAnimToken) return;
+            const t = Math.min(1, (now - started) / duration);
+            runs.forEach(run => {
+                run.path.style.strokeDashoffset = String(run.length * (1 - t));
+                const spot = pointAlong(run.polyline.getLatLngs(), t);
+                if (!spot) return;
+                run.bus.setLatLng(spot.at);
+                if (run.glyph) run.glyph.style.transform = `rotate(${spot.bearing}deg)`;
+            });
+            if (t < 1) {
+                requestAnimationFrame(frame);
+                return;
+            }
+            runs.forEach(run => {
+                run.path.style.strokeDasharray = '';
+                run.path.style.strokeDashoffset = '';
+                if (run.dashed) run.polyline.setStyle({ dashArray: '8 6' });
+                showBusStop(run.bus, run.end);
+            });
+        }
+
+        requestAnimationFrame(frame);
+    }
+
     function drawRoutes(routes) {
         clearRoutes();
+        const token = routeAnimToken;
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const drawn = [];
+
         routes.forEach((route, idx) => {
             const latlngs = route.geometry && route.geometry.length >= 2
                 ? route.geometry
                 : route.points.map(p => [p.lat, p.lng]);
             const color = ROUTE_COLORS[idx % ROUTE_COLORS.length];
             const polyline = L.polyline(latlngs, {
+                className: 'route-trace',
                 color,
                 weight: 5,
-                opacity: 0.88,
-                dashArray: idx > 0 ? '8 6' : null,
+                opacity: reduceMotion ? 0.88 : 0,
+                dashArray: reduceMotion && idx > 0 ? '8 6' : null,
             }).addTo(map);
+            const points = route.points || [];
             routeLayers.push(polyline);
+            drawn.push({
+                polyline,
+                color,
+                dashed: idx > 0,
+                end: points.length ? points[points.length - 1] : null,
+            });
         });
         updateRouteLegend(routes);
-        if (routeLayers.length) {
-            const group = L.featureGroup(routeLayers);
-            map.fitBounds(group.getBounds(), { padding: [50, 50] });
+        if (!drawn.length) return;
+
+        if (reduceMotion) {
+            drawn.forEach(parkBus);
+            map.fitBounds(L.featureGroup(drawn.map(item => item.polyline)).getBounds(), { padding: [50, 50] });
+            return;
         }
+
+        const group = L.featureGroup(drawn.map(item => item.polyline));
+        map.fitBounds(group.getBounds(), { padding: [50, 50] });
+
+        let tries = 0;
+        function start() {
+            if (token !== routeAnimToken) return;
+            tries += 1;
+            const ready = drawn.every(item => {
+                const path = item.polyline.getElement();
+                return path && path.getTotalLength() > 1;
+            });
+            if (!ready && tries < 40) {
+                requestAnimationFrame(start);
+                return;
+            }
+            animateRoutes(drawn, token);
+        }
+        requestAnimationFrame(start);
     }
 
     const GPX_COLOR = '#0ea5e9';
@@ -1945,6 +2263,177 @@
         });
     }
 
+    let locateMarker = null;
+    let locateWatchId = null;
+
+    function personMarkerIcon() {
+        return L.divIcon({
+            className: 'map-person-marker',
+            html: `<span class="point-icon person">${icon('user', 'icon icon-type')}</span>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+        });
+    }
+
+    function setLocatePressed(pressed) {
+        const button = document.querySelector('.leaflet-control-locate-btn');
+        if (!button) return;
+        const label = pressed ? 'Masquer ma position' : 'Afficher ma position';
+        button.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        button.setAttribute('aria-label', label);
+        const tip = button.querySelector('.map-tool-tip');
+        if (tip) tip.textContent = label;
+    }
+
+    function stopLocate() {
+        if (locateWatchId != null && navigator.geolocation) {
+            navigator.geolocation.clearWatch(locateWatchId);
+        }
+        locateWatchId = null;
+        if (locateMarker) {
+            map.removeLayer(locateMarker);
+            locateMarker = null;
+        }
+        setLocatePressed(false);
+    }
+
+    function showUserLocation(latlng, zoomIn) {
+        if (!locateMarker) {
+            locateMarker = L.marker(latlng, {
+                icon: personMarkerIcon(),
+                interactive: false,
+                keyboard: false,
+                zIndexOffset: 700,
+            }).addTo(map);
+            paintMarkerIcon(locateMarker);
+        } else {
+            locateMarker.setLatLng(latlng);
+        }
+        if (!zoomIn) return;
+        const zoom = Math.max(map.getZoom(), 16);
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduceMotion) {
+            map.setView(latlng, zoom);
+        } else {
+            map.flyTo(latlng, zoom, { duration: 0.7 });
+        }
+    }
+
+    function toggleUserLocation() {
+        if (locateWatchId != null) {
+            stopLocate();
+            return;
+        }
+        if (!navigator.geolocation) {
+            showToast('La localisation n’est pas disponible sur cet appareil.', 'error');
+            return;
+        }
+        setLocatePressed(true);
+        let zoomOnNextFix = true;
+        locateWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                showUserLocation(
+                    [position.coords.latitude, position.coords.longitude],
+                    zoomOnNextFix,
+                );
+                zoomOnNextFix = false;
+            },
+            (error) => {
+                stopLocate();
+                showToast(
+                    error.code === error.PERMISSION_DENIED
+                        ? 'Autorisez la localisation pour afficher votre position.'
+                        : 'Impossible de récupérer votre position.',
+                    'error',
+                );
+            },
+            { enableHighAccuracy: true, maximumAge: 4000, timeout: 12000 },
+        );
+    }
+
+    let zoomEnabled = true;
+
+    function setZoomEnabled(enabled) {
+        zoomEnabled = enabled;
+        ['scrollWheelZoom', 'doubleClickZoom', 'touchZoom', 'boxZoom'].forEach((name) => {
+            const handler = map[name];
+            if (!handler) return;
+            if (enabled) handler.enable();
+            else handler.disable();
+        });
+        const zoomBar = document.querySelector('.leaflet-control-zoom');
+        if (zoomBar) {
+            zoomBar.classList.toggle('is-off', !enabled);
+            zoomBar.querySelectorAll('a').forEach((link) => {
+                if (enabled) link.removeAttribute('tabindex');
+                else link.setAttribute('tabindex', '-1');
+            });
+        }
+        const button = document.querySelector('.leaflet-control-zoom-toggle-btn');
+        if (!button) return;
+        const label = enabled ? 'Désactiver le zoom' : 'Activer le zoom';
+        button.setAttribute('aria-pressed', enabled ? 'true' : 'false');
+        button.setAttribute('aria-label', label);
+        const tip = button.querySelector('.map-tool-tip');
+        if (tip) tip.textContent = label;
+    }
+
+    function addZoomToggleControl() {
+        const ZoomToggleControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd() {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-zoom-toggle');
+                const button = L.DomUtil.create('button', 'leaflet-control-zoom-toggle-btn', container);
+                button.type = 'button';
+                button.setAttribute('aria-pressed', 'true');
+                button.setAttribute('aria-label', 'Désactiver le zoom');
+                button.innerHTML = `${icon('zoom-in', 'icon')}<span class="map-tool-tip">Désactiver le zoom</span>`;
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.on(button, 'click', (event) => {
+                    L.DomEvent.preventDefault(event);
+                    L.DomEvent.stopPropagation(event);
+                    setZoomEnabled(!zoomEnabled);
+                });
+                return container;
+            },
+        });
+        new ZoomToggleControl().addTo(map);
+        refreshIcons(document.querySelector('.leaflet-control-zoom-toggle'));
+        const zoomIn = document.querySelector('.leaflet-control-zoom-in');
+        const zoomOut = document.querySelector('.leaflet-control-zoom-out');
+        if (zoomIn) {
+            zoomIn.removeAttribute('title');
+            zoomIn.setAttribute('aria-label', 'Zoom avant');
+        }
+        if (zoomOut) {
+            zoomOut.removeAttribute('title');
+            zoomOut.setAttribute('aria-label', 'Zoom arrière');
+        }
+    }
+
+    function addLocateControl() {
+        const LocateControl = L.Control.extend({
+            options: { position: 'topleft' },
+            onAdd() {
+                const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
+                const button = L.DomUtil.create('button', 'leaflet-control-locate-btn', container);
+                button.type = 'button';
+                button.setAttribute('aria-pressed', 'false');
+                button.setAttribute('aria-label', 'Afficher ma position');
+                button.innerHTML = `${icon('user', 'icon')}<span class="map-tool-tip">Afficher ma position</span>`;
+                L.DomEvent.disableClickPropagation(container);
+                L.DomEvent.on(button, 'click', (event) => {
+                    L.DomEvent.preventDefault(event);
+                    L.DomEvent.stopPropagation(event);
+                    toggleUserLocation();
+                });
+                return container;
+            },
+        });
+        new LocateControl().addTo(map);
+        refreshIcons(document.querySelector('.leaflet-control-locate'));
+    }
+
     function initMap() {
         map = L.map('map').setView(config.mapCenter, config.mapZoom);
         const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1961,6 +2450,8 @@
             return tile;
         };
         tiles.addTo(map);
+        addZoomToggleControl();
+        addLocateControl();
 
         map.on('click', (e) => {
             const type = activeMapClickType();
@@ -2013,7 +2504,155 @@
         requestAnimationFrame(refreshMapSize);
     }
 
+    let selectMenusBound = false;
+
+    function closeSelectMenus(except) {
+        document.querySelectorAll('.app-select.is-open').forEach(open => {
+            if (open === except) return;
+            open.classList.remove('is-open');
+            const menu = open.querySelector('.app-select-menu');
+            const toggle = open.querySelector('.app-select-toggle');
+            if (menu) menu.hidden = true;
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    function placeSelectMenu(toggle, menu) {
+        const rect = toggle.getBoundingClientRect();
+        menu.hidden = false;
+        menu.style.left = `${rect.left}px`;
+        menu.style.width = `${rect.width}px`;
+        const height = menu.offsetHeight;
+        const below = rect.bottom + 6;
+        if (below + height > window.innerHeight - 8) {
+            menu.style.top = `${Math.max(8, rect.top - height - 6)}px`;
+        } else {
+            menu.style.top = `${below}px`;
+        }
+    }
+
+    function enhanceSelects(root) {
+        const scope = root || document;
+        scope.querySelectorAll('select').forEach(select => {
+            if (select.closest('.app-select')) return;
+            const wrap = document.createElement('div');
+            wrap.className = 'app-select';
+            select.parentNode.insertBefore(wrap, select);
+            wrap.appendChild(select);
+            select.classList.add('app-select-native');
+
+            const toggle = document.createElement('button');
+            toggle.type = 'button';
+            toggle.className = 'app-select-toggle';
+            toggle.setAttribute('aria-haspopup', 'listbox');
+            toggle.setAttribute('aria-expanded', 'false');
+            if (select.getAttribute('aria-label')) {
+                toggle.setAttribute('aria-label', select.getAttribute('aria-label'));
+            }
+
+            const value = document.createElement('span');
+            value.className = 'app-select-value';
+            const chevron = document.createElement('span');
+            chevron.className = 'app-select-chevron';
+            chevron.setAttribute('aria-hidden', 'true');
+            chevron.innerHTML = icon('chevron-down', 'icon icon-sm');
+            toggle.append(value, chevron);
+
+            const menu = document.createElement('ul');
+            menu.className = 'app-select-menu';
+            menu.hidden = true;
+            menu.setAttribute('role', 'listbox');
+
+            function syncLabel() {
+                const selected = select.options[select.selectedIndex];
+                value.textContent = selected ? selected.textContent : '';
+                menu.querySelectorAll('.app-select-option').forEach(item => {
+                    const on = item.dataset.value === select.value;
+                    item.classList.toggle('is-selected', on);
+                    item.setAttribute('aria-selected', on ? 'true' : 'false');
+                });
+            }
+
+            function buildMenu() {
+                menu.replaceChildren();
+                [...select.options].forEach(option => {
+                    const item = document.createElement('li');
+                    item.className = 'app-select-option';
+                    item.setAttribute('role', 'option');
+                    item.dataset.value = option.value;
+                    item.textContent = option.textContent;
+                    item.tabIndex = -1;
+                    item.addEventListener('click', () => {
+                        if (option.disabled) return;
+                        select.value = option.value;
+                        select.dispatchEvent(new Event('change', { bubbles: true }));
+                        closeSelectMenus();
+                    });
+                    menu.appendChild(item);
+                });
+                syncLabel();
+            }
+
+            toggle.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (select.disabled) return;
+                const willOpen = menu.hidden;
+                closeSelectMenus();
+                if (!willOpen) return;
+                buildMenu();
+                placeSelectMenu(toggle, menu);
+                toggle.setAttribute('aria-expanded', 'true');
+                wrap.classList.add('is-open');
+            });
+
+            select.addEventListener('change', syncLabel);
+            wrap.append(toggle, menu);
+            buildMenu();
+            refreshIcons(wrap);
+        });
+
+        if (selectMenusBound) return;
+        selectMenusBound = true;
+        document.addEventListener('click', (event) => {
+            if (event.target.closest('.app-select')) return;
+            closeSelectMenus();
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeSelectMenus();
+        });
+        window.addEventListener('resize', () => closeSelectMenus());
+        document.addEventListener('scroll', () => closeSelectMenus(), true);
+    }
+
     function bindEvents() {
+        const actionsPanel = document.getElementById('actions-panel');
+        const actionsToggle = document.getElementById('actions-toggle');
+        if (actionsPanel && actionsToggle) {
+            const applyActions = (collapsed) => {
+                actionsPanel.classList.toggle('is-collapsed', collapsed);
+                actionsToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            };
+            applyActions(localStorage.getItem('graphicage-actions-collapsed') === '1');
+            actionsToggle.addEventListener('click', () => {
+                const collapsed = !actionsPanel.classList.contains('is-collapsed');
+                applyActions(collapsed);
+                localStorage.setItem('graphicage-actions-collapsed', collapsed ? '1' : '0');
+            });
+        }
+        els.guidePrev?.addEventListener('click', () => setGuideView(guideView - 1, true));
+        els.guideNext?.addEventListener('click', () => setGuideView(guideView + 1, true));
+        els.guideSteps.forEach((stepEl) => {
+            stepEl.addEventListener('click', () => {
+                if (stepEl.classList.contains('is-locked')) return;
+                setGuideView(GUIDE_ORDER.indexOf(stepEl.dataset.step), true);
+            });
+            stepEl.addEventListener('keydown', (event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                if (stepEl.classList.contains('is-locked')) return;
+                setGuideView(GUIDE_ORDER.indexOf(stepEl.dataset.step), true);
+            });
+        });
         els.btnLoadSample.addEventListener('click', loadSample);
         els.btnImport.addEventListener('click', () => els.importFile.click());
         els.importFile.addEventListener('change', (e) => {
@@ -2194,6 +2833,7 @@
     GraphicageAuth.init(appBridge);
     GraphicageAuth.refresh();
     refreshIcons();
+    enhanceSelects(document);
     updateProblemTypeHint();
     if (GraphicageFeatures.loadInitialState()) {
         if (points.length) {

@@ -41,6 +41,7 @@ class SolveResult:
     distance_matrix: list[list[int]]
     time_matrix: list[list[int]] | None = None
     routing_engine: str = 'haversine'
+    index_map: list[int] = field(default_factory=list)
 
 
 class RoutingSolverError(Exception):
@@ -62,6 +63,83 @@ def build_time_matrix(distance_matrix: list[list[int]], speed_kmh: float) -> lis
         ]
         for i in range(size)
     ]
+
+
+def expand_shared_deliveries(
+    points: list[dict],
+    pairs: list[list[int]],
+) -> tuple[list[dict], list[list[int]], list[int]]:
+    """Donne à chaque ramassage sa propre arrivée à l'école.
+
+    OR-Tools ne peut visiter un nœud qu'une fois. Si plusieurs ramassages
+    partagent la même école, un seul bus pourrait y déposer. Une copie de
+    l'école par ramassage supplémentaire permet à chaque bus d'y passer.
+    """
+    expanded = [dict(point) for point in points]
+    index_map = list(range(len(points)))
+    used_deliveries: set[int] = set()
+    remapped: list[list[int]] = []
+
+    for pickup_node, delivery_node in pairs:
+        target = delivery_node
+        if delivery_node in used_deliveries:
+            expanded.append(dict(points[delivery_node]))
+            target = len(expanded) - 1
+            index_map.append(delivery_node)
+        else:
+            used_deliveries.add(delivery_node)
+        remapped.append([pickup_node, target])
+
+    return expanded, remapped, index_map
+
+
+def capacity_can_cover(
+    points: list[dict],
+    pairs: list[list[int]] | None,
+    vehicle_capacities: list[int],
+) -> bool:
+    """Vrai si aucun groupe ni le total ne dépasse les places des bus."""
+    if not vehicle_capacities:
+        return True
+    per_bus = max(vehicle_capacities)
+    total = 0
+    if pairs:
+        amounts = [
+            int(points[pickup_node].get('demand', 1) or 1)
+            for pickup_node, _delivery in pairs
+        ]
+    else:
+        amounts = [
+            int(point.get('demand', 1) or 1)
+            for point in points
+            if point.get('type') == 'pickup'
+        ]
+    for amount in amounts:
+        if amount > per_bus:
+            return False
+        total += amount
+    return total <= sum(vehicle_capacities)
+
+
+def collapse_route_nodes(
+    node_indices: list[int],
+    arrival_times: list[tuple[int, int]],
+    index_map: list[int],
+) -> tuple[list[int], list[tuple[int, int]]]:
+    """Replie les copies d'une même école visitées d'affilée."""
+    collapsed_nodes: list[int] = []
+    collapsed_times: list[tuple[int, int]] = []
+    for position, node_index in enumerate(node_indices):
+        if index_map and 0 <= node_index < len(index_map):
+            original = index_map[node_index]
+        else:
+            original = index_map[0] if index_map else node_index
+        if collapsed_nodes and collapsed_nodes[-1] == original:
+            continue
+        collapsed_nodes.append(original)
+        if arrival_times and position < len(arrival_times):
+            collapsed_times.append(arrival_times[position])
+    return collapsed_nodes, collapsed_times
 
 
 def build_demands(
@@ -147,6 +225,16 @@ def solve_routing(
 
     if num_vehicles < 1:
         raise RoutingSolverError('Le nombre de véhicules doit être >= 1.')
+
+    original_points = points
+    original_pairs = pickups_deliveries
+    if problem_type == 'pdp' and pickups_deliveries:
+        points, pickups_deliveries, index_map = expand_shared_deliveries(
+            points,
+            pickups_deliveries,
+        )
+    else:
+        index_map = list(range(len(points)))
 
     distance_matrix = build_distance_matrix(points)
     time_matrix = build_time_matrix(distance_matrix, average_speed_kmh)
@@ -293,7 +381,11 @@ def solve_routing(
     solution = routing.SolveWithParameters(search_parameters)
     if not solution:
         hints = []
-        if has_capacity:
+        if has_capacity and not capacity_can_cover(
+            original_points,
+            original_pairs,
+            vehicle_capacities or [],
+        ):
             hints.append('capacité bus insuffisante')
         if has_time_windows:
             hints.append('fenêtres horaires incompatibles')
@@ -338,6 +430,12 @@ def solve_routing(
             time_var = time_dimension.CumulVar(index)
             arrival_times.append((solution.Min(time_var), solution.Max(time_var)))
 
+        node_indices, arrival_times = collapse_route_nodes(
+            node_indices,
+            arrival_times,
+            index_map,
+        )
+
         if len(node_indices) > 1 or num_vehicles == 1:
             route_geometry: list[list[float]] = []
             route_duration_seconds: int | None = None
@@ -381,4 +479,5 @@ def solve_routing(
         distance_matrix=distance_matrix,
         time_matrix=time_matrix if has_time_windows else None,
         routing_engine=routing_engine,
+        index_map=index_map,
     )
