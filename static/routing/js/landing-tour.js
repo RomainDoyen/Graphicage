@@ -208,7 +208,9 @@
     }
 
     tabs.forEach(function (tab, i) {
-        tab.addEventListener('click', function () { show(i, true); });
+        tab.addEventListener('click', function () {
+            show(i, true);
+        });
         tab.addEventListener('keydown', function (event) {
             let next = null;
             if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = (i + 1) % tabs.length;

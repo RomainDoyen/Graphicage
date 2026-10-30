@@ -1764,6 +1764,42 @@
         return bus;
     }
 
+    let routeFollowPaused = false;
+    let routeFollowBound = false;
+    let routeFollowLock = false;
+
+    function bindRouteFollow() {
+        if (routeFollowBound) return;
+        routeFollowBound = true;
+        map.on('dragstart', () => { routeFollowPaused = true; });
+        map.on('dragend', () => { routeFollowPaused = false; });
+    }
+
+    function keepBusesInView(latlngs) {
+        if (routeFollowPaused || routeFollowLock || !latlngs.length) return;
+        const size = map.getSize();
+        const pad = 80;
+        let worst = null;
+        latlngs.forEach(latlng => {
+            const point = map.latLngToContainerPoint(latlng);
+            const dx = Math.max(pad - point.x, point.x - (size.x - pad), 0);
+            const dy = Math.max(pad - point.y, point.y - (size.y - pad), 0);
+            const score = dx + dy;
+            if (score > 0 && (!worst || score > worst.score)) worst = { latlng, score };
+        });
+        if (!worst) return;
+        routeFollowLock = true;
+        const release = () => { routeFollowLock = false; };
+        map.once('moveend', release);
+        window.setTimeout(release, 700);
+        map.panInside(worst.latlng, {
+            paddingTopLeft: [pad, pad],
+            paddingBottomRight: [pad, pad],
+            animate: true,
+            duration: 0.45,
+        });
+    }
+
     function animateRoutes(items, token) {
         const runs = [];
         items.forEach(item => {
@@ -1792,6 +1828,7 @@
         });
         if (!runs.length) return;
 
+        bindRouteFollow();
         const started = performance.now();
         const longest = Math.max(...runs.map(run => run.length));
         const duration = Math.min(28000, Math.max(12000, (longest / 90) * 1000));
@@ -1799,13 +1836,16 @@
         function frame(now) {
             if (token !== routeAnimToken) return;
             const t = Math.min(1, (now - started) / duration);
+            const spots = [];
             runs.forEach(run => {
                 run.path.style.strokeDashoffset = String(run.length * (1 - t));
                 const spot = pointAlong(run.polyline.getLatLngs(), t);
                 if (!spot) return;
                 run.bus.setLatLng(spot.at);
                 if (run.glyph) run.glyph.style.transform = `rotate(${spot.bearing}deg)`;
+                spots.push(spot.at);
             });
+            keepBusesInView(spots);
             if (t < 1) {
                 requestAnimationFrame(frame);
                 return;
